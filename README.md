@@ -10,15 +10,24 @@ lightweight server interface to Stan model methods
 
 ## example
 
-To compile the example model `bernoulli.stan` in this directory:
+To compile the example model `bernoulli.stan` in the directory in
+which the makefile resides (`stan-model-server`):
+
 ```
-make STAN=path/to/stan/distribution/ bernoulli
+$ cd stan-model-server
+$ make STAN=<stan> bernoulli
 ```
 
-The compiled executable (proof of concept) reads in the data file ("foo.json") and prints the model name on the console.
+where `<stan>` is the path to the top-level directory of the
+repository `stan` from `stan-dev`.  For example, `<stan>` might be
+`~/github/stan-dev/stan`.
 
+This will produce an executable `stan-model-server/bernoulli` which
+can be invoked with:
 
+```
+$ ./bernoulli
+```
 
-
-
-
+It will print the model name on the console (i.e., "bernoulli_model").
+It reads in a data file `foo.json`, but that's hard coded in the executable.
