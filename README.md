@@ -6,7 +6,8 @@ lightweight server interface to Stan model methods
 
 - The stanc compiler; expected path:  bin/stanc
 - The core Stan and Stan math libraries, specified by GNU-Make variables `STAN` and `MATH`.
-- The JSON parser library, included as `src/cmdstan/io/json`
+- The [rapidJSON](https://rapidjson.org) parser library and JSON input parser, `lib/rapidjson_1.1.0` and `src/cmdstan/io/json`, respectively.
+- The [CLI11](https://github.com/CLIUtils/CLI11) command line parser library `lib/CLI11-1.9.1`.
 
 ## example
 
@@ -19,15 +20,17 @@ $ make STAN=<stan> bernoulli
 ```
 
 where `<stan>` is the path to the top-level directory of the
-repository `stan` from `stan-dev`.  For example, `<stan>` might be
-`~/github/stan-dev/stan`.
+source code tree for the `stan` module and which contains
+the Stan math library source code as subdirectory `math`.
+For example, `<stan>` might be `~/github/stan-dev/stan/` *(note trailing slash)*.
 
 This will produce an executable `stan-model-server/bernoulli` which
-can be invoked with:
+takes one command line argument - the name of the JSON file containing
+the definitions for all variables declared in the Stan program's `data` block:
 
 ```
-$ ./bernoulli
+$ ./bernoulli bernoulli.json.data
 ```
 
-It will print the model name on the console (i.e., "bernoulli_model").
-It reads in a data file `foo.json`, but that's hard coded in the executable.
+This exe file prints the model name on the console (i.e., "bernoulli_model") and then exits.
+

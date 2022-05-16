@@ -5,15 +5,17 @@ bin/sandbox : src/sms/sandbox.cpp
 ##   ./bin - contains stanc compiler
 ##   ./lib - contains rapidjson parser library
 ##   ./src - contains cmdstan/io/json
-##   ./stan - stan repo, contains model-header
-##   ./stan/lib/stan_math - stan math library
+##   <user-specified-path>stan - stan repo, contains model-header
+##   <specified/path/to/stan>/stan/lib/stan_math - stan math library
 
 STAN ?= stan/
 MATH ?= $(STAN)lib/stan_math/
 STANC ?= bin/stanc
 RAPIDJSON ?= lib/rapidjson_1.1.0/
+CLI11 ?= lib/CLI11-1.9.1/
 
-INC_FIRST ?= -I src -I $(STAN)src -I $(RAPIDJSON)
+
+INC_FIRST ?= -I src -I $(STAN)src -I $(RAPIDJSON) -I $(CLI11)
 
 ## only runs on Mac, for now
 OS ?= $(shell uname -s)
