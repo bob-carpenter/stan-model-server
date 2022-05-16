@@ -1,3 +1,6 @@
+bin/sandbox : src/sms/sandbox.cpp
+	clang++ -std=c++17 src/sms/sandbox.cpp -o bin/sandbox
+
 ## this Makefile assumes directory contents, structure:
 ##   ./bin - contains stanc compiler
 ##   ./lib - contains rapidjson parser library
@@ -90,23 +93,6 @@ endif
 	$(RM) "$(wildcard $(patsubst %.stan,%.o,$(basename ${STANPROG}).stan))"
 	$(RM) "$(wildcard $(patsubst %.stan,%$(EXE),$(basename ${STANPROG}).stan))"
 
-##
-# Submodule related tasks
-##
-
-.PHONY: stan-update
-stan-update :
-	git submodule update --init --recursive
-
-stan-update/%: stan-update
-	cd stan && git fetch --all && git checkout $* && git pull
-
-stan-pr/%: stan-update
-	cd stan && git reset --hard origin/develop && git checkout $* && git checkout develop && git merge $* --ff --no-edit --strategy=ours
-
-.PHONY: stan-revert
-stan-revert:
-	git submodule update --init --recursive
 
 ##
 # Debug target that prints compile command
