@@ -29,8 +29,7 @@ takes one command line argument - the name of the JSON file containing
 the definitions for all variables declared in the Stan program's `data` block:
 
 ```
-$ ./bernoulli bernoulli.json.data
+$ ./bernoulli bernoulli.data.json
 ```
 
 This exe file prints the model name on the console (i.e., "bernoulli_model") and then exits.
-

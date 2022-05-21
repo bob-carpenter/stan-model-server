@@ -1,0 +1,87 @@
+STAN AS A SERVER
+
+Create executable from model (.stan file) and data (.json file) that
+executes REPL loop to interact with instantiated Stan model to get
+parameter names, transform parameters, evaluate log densities,
+gradients, and Hessians, and generate transformed variables.
+
+(1) Make Executable from Stan Model
+----------------------------------------------------------------------
+a) transpile Stan program (.stan file in)
+   to C++ (.hpp file out)
+       config: threads <int>
+               gpu <int>
+
+b) compile C++ file for model (.hpp file in)
+   to object code (.o file out)
+   and compile main.cpp to object code (.o file out)
+   and link object code to create executable (.exe out)
+       config: compiler options (make/local)
+               make options (e.g., -j8)
+
+(2) Run Server
+----------------------------------------------------------------------
+
+a) run executable for model
+       config: data file path (.json file in)
+               random seed (uint in)
+
+(3) Interact with REPL loop
+----------------------------------------------------------------------
+
+a) exit
+   > write report <string>
+   > terminate REPL loop <return code>
+
+b1) param_num
+    > write number of constrained params <int>
+b2) param_unconstrained_num
+    > write number of unconstrained params <int>
+
+c1) param_names
+    > read include_transformed_parameters <int>
+    > read include_generated_quantities <int>
+    > write names comma-separated <string*>
+c2) param_unconstrained_names
+    > read include_transformed_parameters <int>
+    > read include_generated_quantities <int>
+    > write names comma-separated <string*>
+
+d1) param_constrain
+   > read include_transformed_parameters <int>
+   > read include_generated_quantities <int>
+   > read values <real*>
+   > write transformed values <real*>
+d2) param_unconstrain
+   > read include_transformed_parameters <int>
+   > read include_generated_quantities <int>
+   > read values <real*>
+   > write transformed values <real*>
+
+e) log_density (aka log-prob + finite diffs)
+   > bool include_gradient <int>
+   > bool include_hessian <int>
+   > read propto <int>
+   > read jacobian_adjust <int>
+   > read unconstrained param values <real*>
+   > write log density <real>
+   > write gradient <real*> (if included)
+   > write Hessian (column-major) <real*> (if included)
+
+f) generated_quantities (aka write-array)
+   > read include_transformed_parameters <int>
+   > read include_generated_quantities <int>
+   > read seed (or read 0 to leave state) <int>
+   > read unconstrained params <real*>
+   > write constrained params <real*>
+   > write transformed params <real*> (if included)
+   > write generated quantities <real*> (if included)
+
+g) model_name
+   > write name <string>
+
+
+Questions
+----------------------------------------------------------------------
+* Should we allow ASCII I/O as well as binary?
+* Can we remove synch on the stdin/stdout for this app?
