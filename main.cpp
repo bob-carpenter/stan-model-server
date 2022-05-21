@@ -15,38 +15,94 @@ stan::model::model_base& new_model(stan::io::var_context &data_context,
 
 using shared_context_ptr = std::shared_ptr<stan::io::var_context>;
 
+void quit(stan::model::model_base& model,
+          std::istream& in, std::ostream& out, std::ostream& err) {
+  out << "REPL ended." << std::endl;
+}
+
+void name(stan::model::model_base& model,
+          std::istream& in, std::ostream& out, std::ostream& err) {
+    out << model.model_name();
+}
+
+void param_names(stan::model::model_base& model,
+                 std::istream& in, std::ostream& out, std::ostream&
+                 err,
+                 std::stringstream& cmd,
+                 bool constrained) {
+  bool include_transformed_parameters;
+  cmd >> include_transformed_parameters;
+  bool include_generated_quantities;
+  cmd >> include_generated_quantities;
+  std::vector<std::string> names;
+  if (constrained)
+    model.constrained_param_names(names,
+                                  include_transformed_parameters,
+                                  include_generated_quantities);
+  else
+    model.unconstrained_param_names(names,
+                                    include_transformed_parameters,
+                                    include_generated_quantities);
+  for (size_t i = 0; i < names.size(); ++i) {
+    if (i > 0) out << ",";
+    out << names[i];
+  }
+}
+
+void param_num(stan::model::model_base& model,
+               std::istream& in, std::ostream& out, std::ostream& err,
+               std::stringstream& cmd,
+               bool constrained) {
+  bool include_transformed_parameters;
+  cmd >> include_transformed_parameters;
+  bool include_generated_quantities;
+  cmd >> include_generated_quantities;
+  std::vector<std::string> names;
+  if (constrained)
+    model.constrained_param_names(names,
+                                      include_transformed_parameters,
+                                      include_generated_quantities);
+  else
+    model.unconstrained_param_names(names,
+                                    include_transformed_parameters,
+                                    include_generated_quantities);
+  out << names.size();
+}
+
+
+
 bool repl_instruction(stan::model::model_base& model,
-                      std::istream& in,
-                      std::string& instruction) {
-  std::getline(in, instruction);
+          std::istream& in, std::ostream& out, std::ostream& err) {
+  std::string line;
+  std::getline(in, line);
+  std::stringstream cmd(line);
+  std::string instruction;
+  cmd >> instruction;
   if (instruction == "quit") {
-    std::cout << "REPL ended." << std::endl;
+    quit(model, in, out, err);
     return false;
-  } else if (instruction == "name") {
-    std::cout << model.model_name() << std::endl;
-    return true;
-  } else if (instruction == "param_num") {
-      std::vector<std::string> names;
-      model.constrained_param_names(names, true, true);
-      std::cout << names.size() << std::endl;
-      return true;
-  } else if (instruction == "param_num_unc") {
-      std::vector<std::string> names;
-      model.unconstrained_param_names(names, false, false);
-      std::cout << names.size() << std::endl;
-      return true;
-  } else {
-    std::cout << "Unknown instruction." << std::endl;
-    return true;
   }
 
+  if (instruction == "name") {
+    name(model, in, out, err);
+  } else if (instruction == "param_names"
+             || instruction == "param_unc_names") {
+    param_names(model, in, out, err, cmd, instruction == "param_names");
+  } else if (instruction == "param_num"
+             || instruction == "param_unc_num") {
+    param_num(model, in, out, err, cmd, instruction == "param_num");
+  } else {
+    out << "Unknown instruction.";
+  }
+  out << std::endl;
+  return true;
 }
 
 template <typename T>
-void repl(T&& data_context, uint seed) {
+void repl(T&& data_context, uint seed,
+          std::istream& in, std::ostream& out, std::ostream& err) {
   stan::model::model_base* model = &new_model(data_context, seed, &std::cerr);
-  std::string instruction;
-  while (repl_instruction(*model, std::cin, instruction));
+  while (repl_instruction(*model, in, out, err));
   delete model;
 }
 
@@ -84,9 +140,11 @@ int main(int argc, const char* argv[]) {
     }
     cmdstan::json::json_data json_data_context(in);
     in.close();
-    repl(json_data_context, seed);
+    repl(json_data_context, seed,
+         std::cin, std::cout, std::cerr);
   } else {
     stan::io::empty_var_context empty_data_context;
-    repl(empty_data_context, seed);
+    repl(empty_data_context, seed,
+         std::cin, std::cout, std::cerr);
   }
 }
