@@ -26,8 +26,7 @@ void name(stan::model::model_base& model,
 }
 
 void param_names(stan::model::model_base& model,
-                 std::istream& in, std::ostream& out, std::ostream&
-                 err,
+                 std::istream& in, std::ostream& out, std::ostream& err,
                  std::stringstream& cmd,
                  bool constrained) {
   bool include_transformed_parameters;
@@ -69,10 +68,63 @@ void param_num(stan::model::model_base& model,
   out << names.size();
 }
 
+void param_unconstrain(stan::model::model_base& model,
+                       std::istream& in, std::ostream& out,
+                       std::ostream& err,
+                       std::stringstream& cmd) {
+  std::vector<std::string> names;
+  static constexpr bool include_transformed_parameters = false;
+  static constexpr bool include_generated_quantities = false;
+  model.constrained_param_names(names, include_transformed_parameters,
+                                include_generated_quantities);
+  auto N = names.size();
+  std::vector<double> params(N);
+  std::vector<int> dummy_params_i;
+  for (int n = 0; n < params.size(); ++n)
+    cmd >> params[n];
+  std::vector<double> params_unc;
+  //  model.transform_inits_impl(params, dummy_params_i, params_unc,
+  // std::cerr);
+  for (int i = 0; i < params_unc.size(); ++i) {
+    if (i > 0) out << ',';
+    out << params_unc[i];
+  }
+}
+
+template <typename RNG>
+void param_constrain(stan::model::model_base& model,
+                     std::istream& in, std::ostream& out,
+                     std::ostream& err, RNG& base_rng,
+                     std::stringstream& cmd) {
+  std::vector<std::string> names;
+  bool include_transformed_parameters;
+  cmd >> include_transformed_parameters;
+  bool include_generated_quantities;
+  cmd >> include_generated_quantities;
+  bool incl_gqs = false;
+  model.unconstrained_param_names(names, include_generated_quantities,
+                                  include_generated_quantities);
+  auto N = names.size();
+  Eigen::VectorXd params_unc(N);
+  for (int n = 0; n < params_unc.size(); ++n)
+    cmd >> params_unc(n);
+  Eigen::VectorXd params;
+  std::vector<int> dummy_params_i;
+  model.write_array(base_rng, params_unc, params,
+                    include_transformed_parameters,
+                    include_generated_quantities, &err);
+
+  for (int i = 0; i < params_unc.size(); ++i) {
+    if (i > 0) out << ',';
+    out << params[i];
+  }
+}
 
 
 bool repl_instruction(stan::model::model_base& model,
-          std::istream& in, std::ostream& out, std::ostream& err) {
+                      std::istream& in, std::ostream& out,
+                      std::ostream& err,
+                      boost::ecuyer1988& base_rng) {
   std::string line;
   std::getline(in, line);
   std::stringstream cmd(line);
@@ -91,6 +143,10 @@ bool repl_instruction(stan::model::model_base& model,
   } else if (instruction == "param_num"
              || instruction == "param_unc_num") {
     param_num(model, in, out, err, cmd, instruction == "param_num");
+  } else if (instruction == "param_unconstrain") {
+    param_unconstrain(model, in, out, err, cmd);
+  } else if (instruction == "param_constrain") {
+    param_constrain(model, in, out, err, base_rng, cmd);
   } else {
     out << "Unknown instruction.";
   }
@@ -101,8 +157,13 @@ bool repl_instruction(stan::model::model_base& model,
 template <typename T>
 void repl(T&& data_context, uint seed,
           std::istream& in, std::ostream& out, std::ostream& err) {
+
   stan::model::model_base* model = &new_model(data_context, seed, &std::cerr);
-  while (repl_instruction(*model, in, out, err));
+
+  boost::ecuyer1988 base_rng(seed);
+  base_rng.discard(1000000000000L);
+  while (repl_instruction(*model, in, out, err, base_rng));
+
   delete model;
 }
 

@@ -33,32 +33,31 @@ a) exit
    > write report <string>
    > terminate REPL loop <return code>
 
-b1) param_num
+b) name
+   > write name <string>
+
+c1) param_num incl_tps(bool) incl_gqs(bool)
     > write number of constrained params <int>
-b2) param_unconstrained_num
+      with transformed params, generated quantities as specified
+c2) param_unc_num incl_tps(bool) incl_gqs(bool)
     > write number of unconstrained params <int>
+      with transformed params, generated quantities as specified
 
-c1) param_names
-    > read include_transformed_parameters <int>
-    > read include_generated_quantities <int>
+d1) param_names incl_tps(bool) incl_gqs(bool)
     > write names comma-separated <string*>
-c2) param_unconstrained_names
-    > read include_transformed_parameters <int>
-    > read include_generated_quantities <int>
+      with transformed params, generated quantities as specified
+d2) param_unc_names
     > write names comma-separated <string*>
+      with transformed params, generated quantities as specified
 
-d1) param_constrain
-   > read include_transformed_parameters <int>
-   > read include_generated_quantities <int>
-   > read values <real*>
-   > write transformed values <real*>
-d2) param_unconstrain
-   > read include_transformed_parameters <int>
-   > read include_generated_quantities <int>
-   > read values <real*>
-   > write transformed values <real*>
 
-e) log_density (aka log-prob + finite diffs)
+e1) param_constrain incl_tps(bool) incl_gqs(bool) params_unc(real*)
+    > write unconstrained params, transformed params, generated
+      quantities (real*)
+e2) param_unconstrain params(real*)
+   > write unconstrained parameters (real*)
+
+f) log_density (aka log-prob + finite diffs)
    > bool include_gradient <int>
    > bool include_hessian <int>
    > read propto <int>
@@ -68,7 +67,7 @@ e) log_density (aka log-prob + finite diffs)
    > write gradient <real*> (if included)
    > write Hessian (column-major) <real*> (if included)
 
-f) generated_quantities (aka write-array)
+g) generated_quantities (aka write-array)
    > read include_transformed_parameters <int>
    > read include_generated_quantities <int>
    > read seed (or read 0 to leave state) <int>
@@ -77,8 +76,6 @@ f) generated_quantities (aka write-array)
    > write transformed params <real*> (if included)
    > write generated quantities <real*> (if included)
 
-g) model_name
-   > write name <string>
 
 
 Questions

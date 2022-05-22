@@ -1,6 +1,3 @@
-bin/sandbox : src/sms/sandbox.cpp
-	clang++ -std=c++17 src/sms/sandbox.cpp -o bin/sandbox
-
 ## this Makefile assumes directory contents, structure:
 ##   ./bin - contains stanc compiler
 ##   ./lib - contains rapidjson parser library
