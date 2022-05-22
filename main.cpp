@@ -154,18 +154,59 @@ bool repl_instruction(stan::model::model_base& model,
   return true;
 }
 
-template <typename T>
-void repl(T&& data_context, uint seed,
-          std::istream& in, std::ostream& out, std::ostream& err) {
+struct repl {
+  boost::ecuyer1988 base_rng_;
+  stan::model::model_base& model_;
+  std::istream& in_;
+  std::ostream& out_;
+  std::ostream& err_;
 
-  stan::model::model_base* model = &new_model(data_context, seed, &std::cerr);
+  template <typename T>
+  repl(T&& data_context, uint seed,
+       std::istream& in, std::ostream& out, std::ostream& err)
+      : base_rng_(seed),
+        model_(new_model(data_context, seed, &err)),
+        in_(in), out_(out), err_(err) {
+    base_rng_.discard(1000000000000L);
+  }
 
-  boost::ecuyer1988 base_rng(seed);
-  base_rng.discard(1000000000000L);
-  while (repl_instruction(*model, in, out, err, base_rng));
+  ~repl() { delete &model_; }
 
-  delete model;
-}
+  bool loop() {
+    while (read_eval_print());
+    return 0;  // 0 return code for normal termination
+  }
+
+  bool read_eval_print() {
+    std::string line;
+    std::getline(in_, line);
+    std::stringstream cmd(line);
+    std::string instruction;
+    cmd >> instruction;
+    if (instruction == "quit") {
+      quit(model_, in_, out_, err_);
+      return false;
+    }
+
+    if (instruction == "name") {
+      name(model_, in_, out_, err_);
+    } else if (instruction == "param_names"
+               || instruction == "param_unc_names") {
+      param_names(model_, in_, out_, err_, cmd, instruction == "param_names");
+    } else if (instruction == "param_num"
+               || instruction == "param_unc_num") {
+      param_num(model_, in_, out_, err_, cmd, instruction == "param_num");
+    } else if (instruction == "param_unconstrain") {
+      param_unconstrain(model_, in_, out_, err_, cmd);
+    } else if (instruction == "param_constrain") {
+      param_constrain(model_, in_, out_, err_, base_rng_, cmd);
+    } else {
+      out_ << "Unknown instruction.";
+    }
+    out_ << std::endl;
+    return true;
+  }
+};
 
 int main(int argc, const char* argv[]) {
   // remove synch on std I/O
@@ -191,7 +232,6 @@ int main(int argc, const char* argv[]) {
     return app.exit(e);
   }
 
-  stan::model::model_base* model_ptr;
   if (app.count("--data")) {   // JSON data file exists
     std::ifstream in(data_file_path);
     if (!in.good()) {
@@ -201,11 +241,13 @@ int main(int argc, const char* argv[]) {
     }
     cmdstan::json::json_data json_data_context(in);
     in.close();
-    repl(json_data_context, seed,
-         std::cin, std::cout, std::cerr);
+    repl r(json_data_context, seed,
+           std::cin, std::cout, std::cerr);
+    return r.loop();
   } else {
     stan::io::empty_var_context empty_data_context;
-    repl(empty_data_context, seed,
-         std::cin, std::cout, std::cerr);
+    repl r(empty_data_context, seed,
+           std::cin, std::cout, std::cerr);
+    return r.loop();
   }
 }
