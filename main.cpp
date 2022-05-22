@@ -72,16 +72,13 @@ struct repl {
   std::ostream& out_;
   std::ostream& err_;
 
-  template <typename T>
-  repl(T&& data_context, uint seed,
+  repl(stan::model::model_base& model, uint seed,
        std::istream& in, std::ostream& out, std::ostream& err)
       : base_rng_(seed),
-        model_(new_model(data_context, seed, &err)),
+        model_(model),
         in_(in), out_(out), err_(err) {
     base_rng_.discard(1000000000000L);
   }
-
-  ~repl() { delete &model_; }
 
   bool loop() {
     while (read_eval_print());
@@ -227,11 +224,15 @@ void speedy_io() {
 struct config {
   std::string data_file_path_;
   unsigned int seed_;
+  stan::model::model_base* model_;
 
   config(int argc, const char* argv[]) :
       data_file_path_(), seed_(1234) {
     parse(argc, argv);
+    create_model();
   }
+
+  ~config() { delete model_; }
 
   int parse(int argc, const char* argv[]) {
     CLI::App app{"Stan Command Line Interface"};
@@ -242,25 +243,36 @@ struct config {
                    "Random seed", true)
         -> check(CLI::PositiveNumber);
     CLI11_PARSE(app, argc, argv);
+    return 0;
   }
-  cmdstan::io::var_context data() {
-    if (cfg.data_file_path_ == "")
-      return stan::io::empty_var_context();
-    std::ifstream in(cfg.data_file_path_);
+
+  void create_model() {
+    if (data_file_path_ == "") {
+      stan::io::empty_var_context empty_data;
+      model_ = &new_model(empty_data, seed_, &std::cerr);
+      return;
+    }
+    std::ifstream in(data_file_path_);
     if (!in.good())
-      throw std::exception("Cannot read input file: " + cfg.data_file_path_);
-    cmdstan::json::json_data context(in);
+      throw std::runtime_error("Cannot read input file.");
+    cmdstan::json::json_data data(in);
     in.close();
-    return context;
+    model_ = &new_model(data, seed_, &std::cerr);
   }
 };
 
 
 int main(int argc, const char* argv[]) {
-  speedy_io();
-  config cfg(argc, argv);
-  auto d = cfg.data();
-  repl r(data,  cfg.seed_,
-         std::cin, std::cout, std::cerr);
-  return r.loop();
+  try {
+    speedy_io();
+    config cfg(argc, argv);
+    repl r(*cfg.model_, cfg.seed_, std::cin, std::cout, std::cerr);
+    return r.loop();
+  } catch (const std::exception& e) {
+    std::cerr << "Uncaught std::exception: " << e.what() << std::endl;
+    return 5001;
+  } catch (...) {
+    std::cerr << "Uncaught exception of unknown type." << std::endl;
+    return 5002;
+  }
 }
