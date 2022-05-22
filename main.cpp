@@ -243,30 +243,24 @@ struct config {
         -> check(CLI::PositiveNumber);
     CLI11_PARSE(app, argc, argv);
   }
+  cmdstan::io::var_context data() {
+    if (cfg.data_file_path_ == "")
+      return stan::io::empty_var_context();
+    std::ifstream in(cfg.data_file_path_);
+    if (!in.good())
+      throw std::exception("Cannot read input file: " + cfg.data_file_path_);
+    cmdstan::json::json_data context(in);
+    in.close();
+    return context;
+  }
 };
+
 
 int main(int argc, const char* argv[]) {
   speedy_io();
   config cfg(argc, argv);
-  // auto r = build_repl(cfg);
-
-  if (cfg.data_file_path_ != "") {
-    std::ifstream in(cfg.data_file_path_);
-    if (!in.good()) {
-      std::cerr << "Cannot read input file: " << cfg.data_file_path_ << "."
-                << std::endl;
-      return -1;
-    }
-    cmdstan::json::json_data json_data_context(in);
-    in.close();
-    repl r(json_data_context, cfg.seed_,
-           std::cin, std::cout, std::cerr);
-    return r.loop();
-  } else {
-    stan::io::empty_var_context empty_data_context;
-    repl r(empty_data_context,  cfg.seed_,
-           std::cin, std::cout, std::cerr);
-    return r.loop();
-  }
-  return 0;
+  auto d = cfg.data();
+  repl r(data,  cfg.seed_,
+         std::cin, std::cout, std::cerr);
+  return r.loop();
 }
