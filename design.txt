@@ -50,11 +50,10 @@ d2) param_unc_names
     > write names comma-separated <string*>
       with transformed params, generated quantities as specified
 
-
 e1) param_constrain incl_tps(bool) incl_gqs(bool) params_unc(real*)
     > write unconstrained params, transformed params, generated
       quantities (real*)
-e2) param_unconstrain params(real*)
+* e2) param_unconstrain params(real*)
    > write unconstrained parameters (real*)
 
 f) log_density (aka log-prob + finite diffs)

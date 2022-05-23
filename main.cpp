@@ -1,3 +1,4 @@
+#include <stan/math.hpp>
 #include <cmdstan/io/json/json_data.hpp>
 #include <stan/io/empty_var_context.hpp>
 #include <stan/model/model_base.hpp>
@@ -13,57 +14,36 @@
 stan::model::model_base& new_model(stan::io::var_context &data_context,
                                    unsigned int seed, std::ostream *msg_stream);
 
-void param_unconstrain(stan::model::model_base& model,
-                       std::istream& in, std::ostream& out,
-                       std::ostream& err,
-                       std::stringstream& cmd) {
-  std::vector<std::string> names;
-  static constexpr bool include_transformed_parameters = false;
-  static constexpr bool include_generated_quantities = false;
-  model.constrained_param_names(names, include_transformed_parameters,
-                                include_generated_quantities);
-  auto N = names.size();
-  std::vector<double> params(N);
-  std::vector<int> dummy_params_i;
-  for (int n = 0; n < params.size(); ++n)
-    cmd >> params[n];
-  std::vector<double> params_unc;
-  //  model.transform_inits_impl(params, dummy_params_i, params_unc,
-  // std::cerr);
-  for (int i = 0; i < params_unc.size(); ++i) {
-    if (i > 0) out << ',';
-    out << params_unc[i];
+template <class M>
+struct model_functor {
+  const M& model_;
+  const bool propto_;
+  const bool jacobian_;
+  std::ostream& out_;
+
+  model_functor(const M& m, bool propto, bool jacobian, std::ostream& out)
+      : model_(m), propto_(propto), jacobian_(jacobian), out_(out) { }
+
+  template <typename T>
+  T operator()(const Eigen::Matrix<T, Eigen::Dynamic, 1>& x) const {
+    auto params_r = const_cast<Eigen::Matrix<T, Eigen::Dynamic, 1>&>(x);
+    return propto_
+        ? (jacobian_
+           ? model_.template log_prob<true, true, T>(params_r, &out_)
+           : model_.template log_prob<true, false, T>(params_r, &out_))
+        : (jacobian_
+           ? model_.template log_prob<false, true, T>(params_r, &out_)
+           : model_.template log_prob<false, false, T>(params_r, &out_));
   }
+};
+
+template <typename MM>
+model_functor<MM> create_model_functor(const MM& m, bool propto, bool jacobian,
+                                       std::ostream& out) {
+  return model_functor<MM>(m, propto, jacobian, out);
 }
 
-template <typename RNG>
-void param_constrain(stan::model::model_base& model,
-                     std::istream& in, std::ostream& out,
-                     std::ostream& err, RNG& base_rng,
-                     std::stringstream& cmd) {
-  std::vector<std::string> names;
-  bool include_transformed_parameters;
-  cmd >> include_transformed_parameters;
-  bool include_generated_quantities;
-  cmd >> include_generated_quantities;
-  bool incl_gqs = false;
-  model.unconstrained_param_names(names, include_generated_quantities,
-                                  include_generated_quantities);
-  auto N = names.size();
-  Eigen::VectorXd params_unc(N);
-  for (int n = 0; n < params_unc.size(); ++n)
-    cmd >> params_unc(n);
-  Eigen::VectorXd params;
-  std::vector<int> dummy_params_i;
-  model.write_array(base_rng, params_unc, params,
-                    include_transformed_parameters,
-                    include_generated_quantities, &err);
 
-  for (int i = 0; i < params_unc.size(); ++i) {
-    if (i > 0) out << ',';
-    out << params[i];
-  }
-}
 
 struct repl {
   boost::ecuyer1988 base_rng_;
@@ -117,6 +97,8 @@ struct repl {
       return param_constrain(cmd);
     if (instruction == "param_unconstrain")
       return param_unconstrain(cmd);
+    if (instruction == "log_density")
+      return log_density(cmd);
 
     out_ << "Unknown instruction: " << instruction
          << std::endl;
@@ -185,17 +167,21 @@ struct repl {
     return true;
   }
 
-  bool param_constrain(std::istream& cmd) {
+  int get_num_params() {
+    // TODO(carpenter): cache this straight off
+    bool incl_gqs = false;
+    bool incl_tps = false;
     std::vector<std::string> names;
+    model_.unconstrained_param_names(names, incl_gqs, incl_tps);
+    return names.size();
+  }
+
+  bool param_constrain(std::istream& cmd) {
     bool include_transformed_parameters;
     cmd >> include_transformed_parameters;
     bool include_generated_quantities;
     cmd >> include_generated_quantities;
-    bool incl_gqs = false;
-    model_.unconstrained_param_names(names, include_generated_quantities,
-                                     include_generated_quantities);
-    auto N = names.size();
-    Eigen::VectorXd params_unc(N);
+    Eigen::VectorXd params_unc(get_num_params());
     for (int n = 0; n < params_unc.size(); ++n)
       cmd >> params_unc(n);
     Eigen::VectorXd params;
@@ -209,6 +195,30 @@ struct repl {
   bool param_unconstrain(std::istream& cmd) {
     // TODO(carpenter): implement
     out_ << "param_unconstrain NOT IMPLEMENTED YET." << std::endl;
+    return true;
+  }
+
+
+  bool log_density(std::istream& cmd) {
+    bool propto = true;
+    cmd >> propto;
+    bool jacobian = true;
+    cmd >> jacobian;
+    bool include_grad = true;
+    cmd >> include_grad;
+
+    auto model_functor = create_model_functor(model_, propto, jacobian, err_);
+    int N = get_num_params();
+    Eigen::VectorXd params_unc(get_num_params());
+    for (int n = 0; n < params_unc.size(); ++n)
+      cmd >> params_unc(n);
+    std::cout << "*** params_unc(0) = " << params_unc(0) << std::endl;
+    double log_density;
+    Eigen::VectorXd grad;
+    stan::math::gradient(model_functor, params_unc, log_density, grad);
+    out_ << log_density;
+    out_ << ",";
+    write_csv(grad);
     return true;
   }
 
