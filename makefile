@@ -33,9 +33,13 @@ ifdef STAN_OPENCL
 STANCFLAGS+= --use-opencl
 endif
 
+MAIN ?= src/main.cpp
+MAIN_O = $(patsubst %.cpp,%.o,$(MAIN))
+
+
 ## COMPILE (e.g., COMPILE.cpp == clang++ ...) was set by (MATH)make/compiler_flags
 ## UNKNOWNS:  OUTPUT_OPTION???  LDLIBS???
-main.o : main.cpp
+$(MAIN_O) : $(MAIN)
 	@mkdir -p $(dir $@)
 	$(COMPILE.cpp) $(OUTPUT_OPTION) $(LDLIBS) $<
 
@@ -56,11 +60,11 @@ STAN_TARGETS = $(patsubst %.stan,%,$(wildcard $(patsubst %,%.stan,$(MAKECMDGOALS
 .PRECIOUS: %.hpp
 
 ## builds executable (suffix depends on platform)
-%$(EXE) : %.hpp main.o $(LIBSUNDIALS) $(MPI_TARGETS) $(TBB_TARGETS)
+%$(EXE) : %.hpp $(MAIN_O) $(LIBSUNDIALS) $(MPI_TARGETS) $(TBB_TARGETS)
 	@echo ''
 	@echo '--- Compiling, linking C++ code ---'
 	$(COMPILE.cpp) $(CXXFLAGS_PROGRAM) -x c++ -o $(subst  \,/,$*).o $(subst \,/,$<)
-	$(LINK.cpp) $(subst \,/,$*.o) main.o $(LDLIBS) $(LIBSUNDIALS) $(MPI_TARGETS) $(TBB_TARGETS) $(subst \,/,$(OUTPUT_OPTION))
+	$(LINK.cpp) $(subst \,/,$*.o) $(MAIN_O) $(LDLIBS) $(LIBSUNDIALS) $(MPI_TARGETS) $(TBB_TARGETS) $(subst \,/,$(OUTPUT_OPTION))
 	$(RM) $(subst  \,/,$*).o
 
 ## calculate dependencies for %$(EXE) target
@@ -84,7 +88,7 @@ clean-deps:
 	$(RM) $(call findfiles,src,*.dSYM) $(call findfiles,src/stan,*.dSYM) $(call findfiles,$(MATH)/stan,*.dSYM)
 
 clean-all: clean clean-deps
-	$(RM) main.o
+	$(RM) $(MAIN_O)
 	$(RM) -r $(wildcard $(BOOST)/stage/lib $(BOOST)/bin.v2 $(BOOST)/tools/build/src/engine/bootstrap/ $(BOOST)/tools/build/src/engine/bin.* $(BOOST)/project-config.jam* $(BOOST)/b2 $(BOOST)/bjam $(BOOST)/bootstrap.log)
 
 clean-program:
@@ -99,7 +103,7 @@ endif
 # print compilation command line config
 .PHONY: compile_info
 compile_info:
-	@echo '$(LINK.cpp) $(CXXFLAGS_PROGRAM) main.o $(LDLIBS) $(LIBSUNDIALS) $(MPI_TARGETS) $(TBB_TARGETS)'
+	@echo '$(LINK.cpp) $(CXXFLAGS_PROGRAM) $(MAIN_O) $(LDLIBS) $(LIBSUNDIALS) $(MPI_TARGETS) $(TBB_TARGETS)'
 
 ## print value of makefile variable (e.g., make print-TBB_TARGETS)
 .PHONY: print-%
