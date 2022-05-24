@@ -1,4 +1,6 @@
+#include <stan/math.hpp>
 #include <cmdstan/io/json/json_data.hpp>
+#include <stan/io/empty_var_context.hpp>
 #include <stan/model/model_base.hpp>
 #include <fstream>
 #include <iostream>
@@ -12,34 +14,275 @@
 stan::model::model_base& new_model(stan::io::var_context &data_context,
                                    unsigned int seed, std::ostream *msg_stream);
 
-using shared_context_ptr = std::shared_ptr<stan::io::var_context>;
+template <class M>
+struct model_functor {
+  const M& model_;
+  const bool propto_;
+  const bool jacobian_;
+  std::ostream& out_;
+
+  model_functor(const M& m, bool propto, bool jacobian, std::ostream& out)
+      : model_(m), propto_(propto), jacobian_(jacobian), out_(out) { }
+
+  template <typename T>
+  T operator()(const Eigen::Matrix<T, Eigen::Dynamic, 1>& x) const {
+    auto params_r = const_cast<Eigen::Matrix<T, Eigen::Dynamic, 1>&>(x);
+    return propto_
+        ? (jacobian_
+           ? model_.template log_prob<true, true, T>(params_r, &out_)
+           : model_.template log_prob<true, false, T>(params_r, &out_))
+        : (jacobian_
+           ? model_.template log_prob<false, true, T>(params_r, &out_)
+           : model_.template log_prob<false, false, T>(params_r, &out_));
+  }
+};
+
+template <typename MM>
+model_functor<MM> create_model_functor(const MM& m, bool propto, bool jacobian,
+                                       std::ostream& out) {
+  return model_functor<MM>(m, propto, jacobian, out);
+}
+
+
+
+struct repl {
+  boost::ecuyer1988 base_rng_;
+  stan::model::model_base& model_;
+  std::istream& in_;
+  std::ostream& out_;
+  std::ostream& err_;
+
+  repl(stan::model::model_base& model, uint seed,
+       std::istream& in, std::ostream& out, std::ostream& err)
+      : base_rng_(seed),
+        model_(model),
+        in_(in), out_(out), err_(err) {
+    base_rng_.discard(1000000000000L);
+  }
+
+  bool loop() {
+    while (read_eval_print());
+    return 0;  // 0 return code for normal termination
+  }
+
+  template <typename T>
+  void write_csv(T&& x) {
+    for (size_t i = 0; i < x.size(); ++i) {
+      if (i > 0) out_ << ',';
+      out_ << x[i];
+    }
+    out_ << std::endl;
+  }
+
+  bool read_eval_print() {
+    std::string line;
+    std::getline(in_, line);
+    std::stringstream cmd(line);
+    std::string instruction;
+    cmd >> instruction;
+
+    if (instruction == "quit")
+      return quit();
+    if (instruction == "name")
+      return name();
+    if (instruction == "param_names")
+      return param_names(cmd);
+    if (instruction == "param_unc_names")
+      return param_unc_names(cmd);
+    if (instruction == "param_num")
+      return param_num(cmd);
+    if (instruction == "param_unc_num")
+      return param_unc_num(cmd);
+    if (instruction == "param_constrain")
+      return param_constrain(cmd);
+    if (instruction == "param_unconstrain")
+      return param_unconstrain(cmd);
+    if (instruction == "log_density")
+      return log_density(cmd);
+
+    out_ << "Unknown instruction: " << instruction
+         << std::endl;
+    return true;
+  }
+
+  bool quit() {
+    out_ << "REPL quit." << std::endl;
+    return false;
+  }
+
+  bool name() {
+    out_ << model_.model_name() << std::endl;
+    return true;
+  }
+
+  bool param_names(std::istream& cmd) {
+    bool include_transformed_parameters;
+    cmd >> include_transformed_parameters;
+    bool include_generated_quantities;
+    cmd >> include_generated_quantities;
+    std::vector<std::string> names;
+    model_.constrained_param_names(names,
+                                   include_transformed_parameters,
+                                   include_generated_quantities);
+    write_csv(names);
+    return true;
+  }
+
+  bool param_unc_names(std::istream& cmd) {
+     bool include_transformed_parameters;
+     cmd >> include_transformed_parameters;
+     bool include_generated_quantities;
+     cmd >> include_generated_quantities;
+     std::vector<std::string> names;
+     model_.unconstrained_param_names(names,
+                                      include_transformed_parameters,
+                                      include_generated_quantities);
+     write_csv(names);
+     return true;
+  }
+
+  bool param_num(std::istream& cmd) {
+    bool include_transformed_parameters;
+    cmd >> include_transformed_parameters;
+    bool include_generated_quantities;
+    cmd >> include_generated_quantities;
+    std::vector<std::string> names;
+    model_.constrained_param_names(names,
+                                   include_transformed_parameters,
+                                   include_generated_quantities);
+    out_ << names.size() << std::endl;
+    return true;
+  }
+
+  bool param_unc_num(std::istream& cmd) {
+    bool include_transformed_parameters;
+    cmd >> include_transformed_parameters;
+    bool include_generated_quantities;
+    cmd >> include_generated_quantities;
+    std::vector<std::string> names;
+    model_.unconstrained_param_names(names,
+                                     include_transformed_parameters,
+                                     include_generated_quantities);
+    out_ << names.size() << std::endl;
+    return true;
+  }
+
+  int get_num_params() {
+    // TODO(carpenter): cache this straight off
+    bool incl_gqs = false;
+    bool incl_tps = false;
+    std::vector<std::string> names;
+    model_.unconstrained_param_names(names, incl_gqs, incl_tps);
+    return names.size();
+  }
+
+  bool param_constrain(std::istream& cmd) {
+    bool include_transformed_parameters;
+    cmd >> include_transformed_parameters;
+    bool include_generated_quantities;
+    cmd >> include_generated_quantities;
+    Eigen::VectorXd params_unc(get_num_params());
+    for (int n = 0; n < params_unc.size(); ++n)
+      cmd >> params_unc(n);
+    Eigen::VectorXd params;
+    model_.write_array(base_rng_, params_unc, params,
+                       include_transformed_parameters,
+                       include_generated_quantities, &err_);
+    write_csv(params);
+    return true;
+  }
+
+  bool param_unconstrain(std::istream& cmd) {
+    // TODO(carpenter): implement
+    out_ << "param_unconstrain NOT IMPLEMENTED YET." << std::endl;
+    return true;
+  }
+
+
+  bool log_density(std::istream& cmd) {
+    bool propto = true;
+    cmd >> propto;
+    bool jacobian = true;
+    cmd >> jacobian;
+    bool include_grad = true;
+    cmd >> include_grad;
+
+    auto model_functor = create_model_functor(model_, propto, jacobian, err_);
+    int N = get_num_params();
+    Eigen::VectorXd params_unc(get_num_params());
+    for (int n = 0; n < params_unc.size(); ++n)
+      cmd >> params_unc(n);
+    std::cout << "*** params_unc(0) = " << params_unc(0) << std::endl;
+    double log_density;
+    Eigen::VectorXd grad;
+    stan::math::gradient(model_functor, params_unc, log_density, grad);
+    out_ << log_density;
+    out_ << ",";
+    write_csv(grad);
+    return true;
+  }
+
+};  // struct repl
+
+void speedy_io() {
+  // remove synch on std I/O
+  std::ios_base::sync_with_stdio(false);
+  // don't flush std::out before read std::cin
+  std::cin.tie(NULL);
+}
+
+struct config {
+  std::string data_file_path_;
+  unsigned int seed_;
+  stan::model::model_base* model_;
+
+  config(int argc, const char* argv[]) :
+      data_file_path_(), seed_(1234) {
+    parse(argc, argv);
+    create_model();
+  }
+
+  ~config() { delete model_; }
+
+  int parse(int argc, const char* argv[]) {
+    CLI::App app{"Stan Command Line Interface"};
+    app.add_option("-d, --data", data_file_path_,
+                   "File containing data in JSON", true)
+        -> check(CLI::ExistingFile);
+    app.add_option("-s, --seed", seed_,
+                   "Random seed", true)
+        -> check(CLI::PositiveNumber);
+    CLI11_PARSE(app, argc, argv);
+    return 0;
+  }
+
+  void create_model() {
+    if (data_file_path_ == "") {
+      stan::io::empty_var_context empty_data;
+      model_ = &new_model(empty_data, seed_, &std::cerr);
+      return;
+    }
+    std::ifstream in(data_file_path_);
+    if (!in.good())
+      throw std::runtime_error("Cannot read input file.");
+    cmdstan::json::json_data data(in);
+    in.close();
+    model_ = &new_model(data, seed_, &std::cerr);
+  }
+};
+
 
 int main(int argc, const char* argv[]) {
-
-  // Command-line arguments
-  std::string filename;
-  CLI::App app{"Allowed options"};
-  app.add_option("input_file", filename, "Input data files in JSON notation.", true)
-      ->check(CLI::ExistingFile);
-
   try {
-    CLI11_PARSE(app, argc, argv);
-  } catch (const CLI::ParseError &e) {
-    std::cout << e.get_exit_code();
-    return app.exit(e);
+    speedy_io();
+    config cfg(argc, argv);
+    repl r(*cfg.model_, cfg.seed_, std::cin, std::cout, std::cerr);
+    return r.loop();
+  } catch (const std::exception& e) {
+    std::cerr << "Uncaught std::exception: " << e.what() << std::endl;
+    return 5001;
+  } catch (...) {
+    std::cerr << "Uncaught exception of unknown type." << std::endl;
+    return 5002;
   }
-
-  std::ifstream infile;
-  infile.open(filename.c_str());
-  if (!infile.good()) {
-      std::cout << "Cannot read input file: " << filename << "."
-                << std::endl;
-      return -1;
-  }
-  cmdstan::json::json_data var_context(infile);
-  infile.close();
-  shared_context_ptr json_context = std::make_shared<cmdstan::json::json_data>(var_context);
-
-  stan::model::model_base& model = new_model(*json_context, 42u, &std::cout);
-  std::cout << model.model_name() << std::endl;
 }

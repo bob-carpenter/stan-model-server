@@ -1,0 +1,68 @@
+STAN AS A SERVER
+
+Create executable from model (.stan file) and data (.json file) that
+executes REPL loop to interact with instantiated Stan model to get
+parameter names, transform parameters, evaluate log densities,
+gradients, and Hessians, and generate transformed variables.
+
+(1) Make Executable from Stan Model
+----------------------------------------------------------------------
+a) transpile Stan program (.stan file in)
+   to C++ (.hpp file out)
+       config: threads <int>
+               gpu <int>
+
+b) compile C++ file for model (.hpp file in)
+   to object code (.o file out)
+   and compile main.cpp to object code (.o file out)
+   and link object code to create executable (.exe out)
+       config: compiler options (make/local)
+               make options (e.g., -j8)
+
+(2) Run Server
+----------------------------------------------------------------------
+
+a) run executable for model
+       config: data file path (.json file in)
+               random seed (uint in)
+
+(3) Interact with REPL loop
+----------------------------------------------------------------------
+
+a) exit
+   > write report <string>
+   > terminate REPL loop <return code>
+
+b) name
+   > write name <string>
+
+c1) param_num incl_tps(bool) incl_gqs(bool)
+    > write number of constrained params <int>
+      with transformed params, generated quantities as specified
+c2) param_unc_num incl_tps(bool) incl_gqs(bool)
+    > write number of unconstrained params <int>
+      with transformed params, generated quantities as specified
+
+d1) param_names incl_tps(bool) incl_gqs(bool)
+    > write names comma-separated <string*>
+      with transformed params, generated quantities as specified
+d2) param_unc_names
+    > write names comma-separated <string*>
+      with transformed params, generated quantities as specified
+
+e1) param_constrain incl_tps(bool) incl_gqs(bool) params_unc(real*)
+    > write unconstrained params, transformed params, generated
+      quantities (real*)
+* e2) param_unconstrain params(real*)
+   > write unconstrained parameters (real*)
+
+f) log_density propto(bool) jacobian(bool) grad(bool) params_unc(real*)
+   > write log density <real>
+   > write gradient <real*> (if included)
+   * > write Hessian (column-major) <real*> (if included)
+
+
+Questions
+----------------------------------------------------------------------
+* Should we allow ASCII I/O as well as binary?
+* Can we remove synch on the stdin/stdout for this app?
