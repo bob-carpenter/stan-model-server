@@ -5,25 +5,22 @@ A lightweight server interface to Stan model methods:
 
 ## Example
 
-To compile the example model `bernoulli.stan` in the directory in
-which the makefile resides (`stan-model-server`):
+Example Stan programs are in the `stan` directory.
+The subdirectory `stan/bernoulli` contains both the Stan model file and input data.
+You must compile all Stan models from the directory in which the makefile resides,
+i.e. from the `stan-model-server` directory.
 
 ```
 $ cd stan-model-server
-$ make STAN=<stan> bernoulli
+$ make src/bernoulli/bernoulli
 ```
 
-where `<stan>` is the path to the top-level directory of the
-source code tree for the `stan` module and which contains
-the Stan math library source code as subdirectory `math`.
-For example, `<stan>` might be `~/github/stan-dev/stan/` *(note the
-required trailing slash)*.
-
-This will produce an executable `stan-model-server/bernoulli` which
+This will produce an executable `stan-model-server/stan/bernoulli/bernoulli` which
 takes one command line argument - the name of the JSON file containing
 the definitions for all variables declared in the Stan program's `data` block:
 
 ```
+$ cd stan/bernoulli
 $ ./bernoulli -s 1234 -d bernoulli.data.json
 ```
 
@@ -35,6 +32,8 @@ the data in JSON.  You will then enter the REPL loop.
 
 The basic design follows the standard read-eval-print loop design
 pattern. See the [design document](design.txt) for specifics.
+
+
 
 
 ## Inspiration
@@ -61,8 +60,13 @@ del s
 
 ## Dependencies
 
+- A modern C++ toolchain, including the GNU-Make utility, [details here](https://mc-stan.org/docs/2_29/cmdstan-guide/cmdstan-installation.html#source-installation)
 - The stanc compiler; expected path:  bin/stanc
-- The core Stan and Stan math libraries, specified by GNU-Make variables `STAN` and `MATH`.
+- The core Stan and Stan math libraries, specified by GNU-Make variables `STAN` and `MATH` with the following defaults
+```
+	STAN ?= $(HOME)/github/stan-dev/cmdstan/stan/
+	MATH ?= $(STAN)lib/stan_math/
+```
 - The [rapidJSON](https://rapidjson.org) parser library and JSON input parser, `lib/rapidjson_1.1.0` and `src/cmdstan/io/json`, respectively.
 - The [CLI11](https://github.com/CLIUtils/CLI11) command line parser library `lib/CLI11-1.9.1`.
 
