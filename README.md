@@ -48,6 +48,17 @@ The overall idea to do this came from
 
 Redding Stan is released under BSD-3, like Stan itself.
 
+## Python Client
+
+You can run the Python client from this directory as follows.
+
+```python
+import StanModelClient
+s = StanModelClient.StanClient("./bernoulli", data = "bernoulli.data.json", seed = "1234")
+s.name()
+del s
+```
+
 ## Dependencies
 
 - The stanc compiler; expected path:  bin/stanc
