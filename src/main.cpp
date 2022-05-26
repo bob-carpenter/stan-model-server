@@ -61,9 +61,8 @@ struct repl {
         model_(model),
         in_(in), out_(out), err_(err) {
     base_rng_.discard(1000000000000L);
-    // set single precision +1, which should be 8 digits of accuracy
-    out_ << std::setprecision(std::numeric_limits<float>::digits10 + 1);
-    err_ << std::setprecision(std::numeric_limits<float>::digits10 + 1);
+    out_ << std::setprecision(std::numeric_limits<double>::digits10);
+    err_ << std::setprecision(std::numeric_limits<double>::digits10);
   }
 
   int loop() {
@@ -86,28 +85,32 @@ struct repl {
     std::stringstream cmd(line);
     std::string instruction;
     cmd >> instruction;
-
-    if (instruction == "quit")
-      return quit();
-    if (instruction == "name")
-      return name();
-    if (instruction == "param_names")
-      return param_names(cmd);
-    if (instruction == "param_unc_names")
-      return param_unc_names(cmd);
-    if (instruction == "param_num")
-      return param_num(cmd);
-    if (instruction == "param_unc_num")
-      return param_unc_num(cmd);
-    if (instruction == "param_constrain")
-      return param_constrain(cmd);
-    if (instruction == "param_unconstrain")
-      return param_unconstrain(cmd);
-    if (instruction == "log_density")
-      return log_density(cmd);
-
-    out_ << "Unknown instruction: " << instruction
-         << std::endl;
+    try {
+      if (instruction == "quit")
+	return quit();
+      if (instruction == "name")
+	return name();
+      if (instruction == "param_names")
+	return param_names(cmd);
+      if (instruction == "param_unc_names")
+	return param_unc_names(cmd);
+      if (instruction == "param_num")
+	return param_num(cmd);
+      if (instruction == "param_unc_num")
+	return param_unc_num(cmd);
+      if (instruction == "param_constrain")
+	return param_constrain(cmd);
+      if (instruction == "param_unconstrain")
+	return param_unconstrain(cmd);
+      if (instruction == "log_density")
+	return log_density(cmd);
+      out_ << "UNKNOWN" << std::endl;
+      err_ << "Unknown instruction: " << instruction << std::endl;
+    } catch (const std::exception& e) {
+      out_ << "ERROR" << std::endl;
+      err_ << "Error in instruction: " << instruction << ".  "
+	   << "Error message: " << e.what() << std::endl;
+    }
     return true;
   }
 
