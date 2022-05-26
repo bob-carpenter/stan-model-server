@@ -9,16 +9,19 @@
 # STAN_OPENCL:  enable GPU routines
 
 ## include paths
-STAN ?= $(HOME)/github/stan-dev/cmdstan/stan/
+GITHUB ?= $(HOME)/github/
+CMDSTAN ?= $(GITHUB)stan-dev/cmdstan/
+STANC ?= $(CMDSTAN)bin/stanc
+STAN ?= $(CMDSTAN)stan/
 MATH ?= $(STAN)lib/stan_math/
-STANC ?= bin/stanc
+# TBB_TARGETS = $(MATH)lib/tbb/libtbb.dylib
 RAPIDJSON ?= lib/rapidjson_1.1.0/
 CLI11 ?= lib/CLI11-1.9.1/
 
 ## required C++ includes
 INC_FIRST ?= -I src -I $(STAN)src -I $(RAPIDJSON) -I $(CLI11)
 
-## only runs on Mac, for now
+## set CXX = g++ and CX_TYPE to gcc to run under linux
 OS ?= $(shell uname -s)
 CXX ?= clang++
 CXX_TYPE ?= clang
@@ -43,10 +46,6 @@ $(MAIN_O) : $(MAIN)
 	@mkdir -p $(dir $@)
 	$(COMPILE.cpp) $(OUTPUT_OPTION) $(LDLIBS) $<
 
-## the stan files that corresponds to the argument to the call to make
-## (e.g, "bernoulli" in "make bernoulli")
-STAN_TARGETS = $(patsubst %.stan,%,$(wildcard $(patsubst %,%.stan,$(MAKECMDGOALS))))
-
 ## generate .hpp file from .stan file using stanc
 %.hpp : %.stan $(STANC)
 	@echo ''
@@ -69,7 +68,7 @@ STAN_TARGETS = $(patsubst %.stan,%,$(wildcard $(patsubst %,%.stan,$(MAKECMDGOALS
 
 ## calculate dependencies for %$(EXE) target
 ifneq (,$(STAN_TARGETS))
-$(patsubst %,%.d,$(STAN_TARGETS)) : DEPTARGETS += -MT $(patsubst %.d,%$(EXE),$@) -include $< -include main.cpp
+$(patsubst %,%.d,$(STAN_TARGETS)) : DEPTARGETS += -MT $(patsubst %.d,%$(EXE),$@) -include $< -include $(MAIN)
 -include $(patsubst %,%.d,$(STAN_TARGETS))
 -include $(patsubst %.cpp,%.d,main.cpp)
 endif

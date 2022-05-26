@@ -4,6 +4,8 @@
 #include <stan/model/model_base.hpp>
 #include <fstream>
 #include <iostream>
+#include <iostream>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -37,6 +39,7 @@ struct model_functor {
   }
 };
 
+// factory function to automate type inference for MM
 template <typename MM>
 model_functor<MM> create_model_functor(const MM& m, bool propto, bool jacobian,
                                        std::ostream& out) {
@@ -58,11 +61,14 @@ struct repl {
         model_(model),
         in_(in), out_(out), err_(err) {
     base_rng_.discard(1000000000000L);
+    // set single precision +1, which should be 8 digits of accuracy
+    out_ << std::setprecision(std::numeric_limits<float>::digits10 + 1);
+    err_ << std::setprecision(std::numeric_limits<float>::digits10 + 1);
   }
 
-  bool loop() {
+  int loop() {
     while (read_eval_print());
-    return 0;  // 0 return code for normal termination
+    return 0;
   }
 
   template <typename T>
@@ -193,11 +199,15 @@ struct repl {
   }
 
   bool param_unconstrain(std::istream& cmd) {
-    // TODO(carpenter): implement
-    out_ << "param_unconstrain NOT IMPLEMENTED YET." << std::endl;
+    std::string line;
+    std::getline(cmd, line);
+    std::stringstream in(line);
+    cmdstan::json::json_data inits_context(in);
+    Eigen::VectorXd params_unc(1);
+    model_.transform_inits(inits_context, params_unc, &err_);
+    write_csv(params_unc);
     return true;
   }
-
 
   bool log_density(std::istream& cmd) {
     bool propto = true;
@@ -212,7 +222,6 @@ struct repl {
     Eigen::VectorXd params_unc(get_num_params());
     for (int n = 0; n < params_unc.size(); ++n)
       cmd >> params_unc(n);
-    std::cout << "*** params_unc(0) = " << params_unc(0) << std::endl;
     double log_density;
     Eigen::VectorXd grad;
     stan::math::gradient(model_functor, params_unc, log_density, grad);
