@@ -21,9 +21,6 @@ The package is distributed with a a Stan program in
 `stan/bernoulli/bernoulli.hpp` and matching data in
 `stan/bernoulli/bernoulli.data.json`.
 
-> Before trying this, check out the [dependencies](#Dependencies)
-section below.
-
 To compile the server
 executable,
 
@@ -38,8 +35,8 @@ Then we run from the command line with data and an RNG seed.
 $ stan/bernoulli/bernoulli -s 1234 -d stan/bernoulli/bernoulli.data.json
 ```
 
-The lines marked with `<` indicate input from the user and those with
-`>` the response from the server.
+The lines marked with `<` indicate input from the user and the
+unmarked lines are responses from the server.
 
 ```
 < name
@@ -71,13 +68,13 @@ theta
 ## Motivation and Inspiration
 
 We want to be able to access Stan model methods from within R or
-Python in order to do algorithm development.  The original system that
-did this is the HTTPStan, which is an official Stan project
+Python in order to do algorithm development.  The first system that
+did this is HTTPStan, an official Stan project:
 
 * GitHub stan-dev: [httpstan](https://github.com/stan-dev/httpstan)
 
-The direct inspiration for this project came from Redding Stan, by
-Daniel Lee and Dan Muck.
+The direct inspiration for this project came from the simple I/O
+structure of Redding Stan:
 
 * Dan Muck and Daniel
   Lee. 2022. [Smuggling log probability and gradients out of Stan programs — ReddingStan](https://blog.mc-stan.org/2022/03/24/smuggling-log-probability-and-gradients-out-of-stan-programs-reddingstan/). *The
@@ -91,9 +88,11 @@ The Python client is still a work in progress and so far only has the
 `name()` method implemented.
 
 ```python
-> import StanModelClient
-> s = StanModelClient.StanClient("./bernoulli", data = "bernoulli.data.json", seed = "1234")
-> s.name()
+> import StanModelClient as smc
+> sc = smc.StanClient("./bernoulli",
+                      data = "bernoulli.data.json",
+                      seed = "1234")
+> sc.name()
 bernoulli_model
 ```
 
