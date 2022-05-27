@@ -1,133 +1,102 @@
 # Stan Model Server
 
-A lightweight server interface to Stan model methods:
+A lightweight server interface to Stan model methods.
+
+#### Installation Instructions
+
+For installation instructions, see
+
+* Installing Stan Model Server [Install Documentation](doc/INSTALL.md)
+
+#### Read-Eval-Print Loop
+
+For full documentation on the REPL, see:
+
+* Stan Model Server [REPL Documentation](doc/REPL.md)
 
 
-## Example
+## Hello, Shell!
 
-Example Stan programs are organized into directories under the `stan`
-directory.  The subdirectory `stan/bernoulli` contains both the Stan
-model file and input data.  You must compile all Stan models from the
-directory in which the makefile resides (i.e., from the
-`stan-model-server` directory).
+The package is distributed with a a Stan program in
+`stan/bernoulli/bernoulli.hpp` and matching data in
+`stan/bernoulli/bernoulli.data.json`.
 
-> Before trying this, check out the [dependencies](#Dependencies) section below.  You will at least need to install the stanc parser binary for your platform, as well as the source for Stan (`stan-dev:stan` repo) and for the Stan Math library (`stan-dev:math` repo).
+> Before trying this, check out the [dependencies](#Dependencies)
+section below.
+
+To compile the server
+executable,
 
 ```
 $ cd stan-model-server
-$ make src/bernoulli/bernoulli
+$ make CMDSTAN=/Users/carp/github/stan-dev/cmdstan stan/bernoulli/bernoulli
 ```
 
-This will produce an executable `stan-model-server/stan/bernoulli/bernoulli` which
-takes one command line argument - the name of the JSON file containing
-the definitions for all variables declared in the Stan program's `data` block:
+Then we run from the command line with data and an RNG seed.
 
 ```
-$ cd stan/bernoulli
-$ ./bernoulli -s 1234 -d bernoulli.data.json
+$ stan/bernoulli/bernoulli -s 1234 -d stan/bernoulli/bernoulli.data.json
 ```
 
-The `-s` flag indicates a random seed and the `-d` flag the path to
-the data in JSON.  You will then enter the REPL loop.
+The lines marked with `<` indicate input from the user and those with
+`>` the response from the server.
+
+```
+< name
+bernoulli_model
+
+< param_num 1 1
+3
+
+< param_unc_num
+1
+
+< param_names 1 1
+theta,logit_theta,y_sim
+
+< param_unc_names
+theta
+
+< param_constrain 1 1 -2.3
+0.0911229610148561,-2.3,0
+
+< param_unconstrain {"theta":0.09112}
+-2.30003575312272
+
+< log_density 1 1 1 1 -1.5
+-6.91695933579303,0.810893714323724,-1.78975742485563
+```
 
 
-## Design: Read-eval-print loop (REPL)
+## Motivation and Inspiration
 
-The basic design follows the standard read-eval-print loop design
-pattern. See the [design document](design.txt) for specifics.
+We want to be able to access Stan model methods from within R or
+Python in order to do algorithm development.  The original system that
+did this is the HTTPStan, which is an official Stan project
 
+* GitHub stan-dev: [httpstan](https://github.com/stan-dev/httpstan)
 
-
-
-## Inspiration
-
-The overall idea to do this came from
+The direct inspiration for this project came from Redding Stan, by
+Daniel Lee and Dan Muck.
 
 * Dan Muck and Daniel
   Lee. 2022. [Smuggling log probability and gradients out of Stan programs — ReddingStan](https://blog.mc-stan.org/2022/03/24/smuggling-log-probability-and-gradients-out-of-stan-programs-reddingstan/). *The
   Stan Blog*.
 * dmuck. [redding-stan](https://github.com/dmuck/redding-stan). GitHub.
 
-Redding Stan is released under BSD-3, like Stan itself.
 
 ## Python Client
 
-You can run the Python client from this directory as follows.
+The Python client is still a work in progress and so far only has the
+`name()` method implemented.
 
 ```python
-import StanModelClient
-s = StanModelClient.StanClient("./bernoulli", data = "bernoulli.data.json", seed = "1234")
-s.name()
-del s
+> import StanModelClient
+> s = StanModelClient.StanClient("./bernoulli", data = "bernoulli.data.json", seed = "1234")
+> s.name()
+bernoulli_model
 ```
 
-## Dependencies
-
-#### GNU make
-
-GNU make must be available on your path so that `make` on the
-command-line resolves.
-
-#### C++ toolchain
-
-A C++ toolchain that supports C++1y (between C++14 and C++17);  here 
-are
-[full details on C++ requirements](https://mc-stan.org/docs/2_29/cmdstan-guide/cmdstan-installation.html#source-installation). 
-
-The makefile defaults to `clang`, but this can be changed by setting the
-`CXX` environment variable for the makefile.
-
-```
-CXX ?= clang++
-```
-
-#### stanc
-
-Stanc is the Stan compiler (it's technically a transpiler from Stan to
-C++). The environment variable `STANC` must point to this program.
-The easiest way to do this is to move a `stanc` instance for your
-platform to the local `bin` directory (e.g., from a `cmdstan`
-install). 
-
-```
-STANC ?= bin/stanc 
-```
-
-#### stan and math
-
-We need the source code for
-
-* Stan [GitHub repo `stan-dev:stan`](https://github.com/stan-dev/stan), and 
-* Stan math library: [GitHub repo `stan-dev:math`](https://github.com/stan-dev/math)
-
-These are specified by the variables `STAN` and `MATH`, with the following
-defaults. 
-
-```
-	STAN ?= $(HOME)/github/stan-dev/cmdstan/stan/
-	MATH ?= $(STAN)lib/stan_math/
-```
-
-#### Rapid JSON
-
-The Stan model server requires [rapidJSON](https://rapidjson.org) for
-parsing data files. A version is distributed with the model server,
-but a different installation can be used by setting the relevant
-environment variable.
-
-```
-RAPIDJSON ?= lib/rapidjson_1.1.0/
-```
-
-#### Command line interface for C++ 11
-
-We also distribute [CLI11](https://github.com/CLIUtils/CLI11), a
-command line interface library for C++11.  An alternative version can
-be used by setting this make variable.
-
-```
-CLI11 ?= lib/CLI11-1.9.1/
-```
 
 ## License
 

@@ -76,7 +76,14 @@ struct repl {
       if (i > 0) out_ << ',';
       out_ << x[i];
     }
-    out_ << std::endl;
+  }
+
+  template <typename T>
+  void write_csv_eigen(T&& x) {
+    for (int i = 0; i < x.size(); ++i) {
+      if (i > 0) out_ << ',';
+      out_ << x(i);
+    }
   }
 
   bool read_eval_print() {
@@ -134,6 +141,7 @@ struct repl {
                                    include_transformed_parameters,
                                    include_generated_quantities);
     write_csv(names);
+    out_ << std::endl;
     return true;
   }
 
@@ -147,6 +155,7 @@ struct repl {
                                       include_transformed_parameters,
                                       include_generated_quantities);
      write_csv(names);
+     out_ << std::endl;
      return true;
   }
 
@@ -197,7 +206,8 @@ struct repl {
     model_.write_array(base_rng_, params_unc, params,
                        include_transformed_parameters,
                        include_generated_quantities, &err_);
-    write_csv(params);
+    write_csv_eigen(params);
+    out_ << std::endl;
     return true;
   }
 
@@ -208,7 +218,8 @@ struct repl {
     cmdstan::json::json_data inits_context(in);
     Eigen::VectorXd params_unc(1);
     model_.transform_inits(inits_context, params_unc, &err_);
-    write_csv(params_unc);
+    write_csv_eigen(params_unc);
+    out_ << std::endl;
     return true;
   }
 
@@ -219,6 +230,8 @@ struct repl {
     cmd >> jacobian;
     bool include_grad = true;
     cmd >> include_grad;
+    bool include_hessian = true;
+    cmd >> include_hessian;
 
     auto model_functor = create_model_functor(model_, propto, jacobian, err_);
     int N = get_num_params();
@@ -227,10 +240,23 @@ struct repl {
       cmd >> params_unc(n);
     double log_density;
     Eigen::VectorXd grad;
-    stan::math::gradient(model_functor, params_unc, log_density, grad);
+    Eigen::MatrixXd hess;
+    if (include_hessian) {
+      stan::math::internal::finite_diff_hessian_auto(model_functor,
+          params_unc, log_density, grad, hess);
+    } else {
+      stan::math::gradient(model_functor, params_unc, log_density, grad);
+    }
     out_ << log_density;
-    out_ << ",";
-    write_csv(grad);
+    if (include_grad) {
+      out_ << ",";
+      write_csv_eigen(grad);
+    }
+    if (include_hessian) {
+      out_ << ",";
+      write_csv_eigen(hess);  // column major output
+    }
+    out_ << std::endl;
     return true;
   }
 
