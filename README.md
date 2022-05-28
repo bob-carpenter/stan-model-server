@@ -89,9 +89,9 @@ The Python client is still a work in progress and so far only has the
 
 ```python
 > import StanModelClient as smc
-> sc = smc.StanClient("./bernoulli",
-                      data = "bernoulli.data.json",
-                      seed = "1234")
+> sc = smc.StanClient("./stan/bernoulli/bernoulli",
+                      data = "stan/bernoulli/bernoulli.data.json",
+                      seed = 1234)
 > sc.name()
 bernoulli_model
 ```
