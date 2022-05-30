@@ -30,6 +30,19 @@ stan::model::model_base& new_model(stan::io::var_context &data_context,
 
 
 /**
+ * Turn off synchronization within standard streams and don't flush
+ * `std::out` before reading `std::in`.  Together, these should
+ * substantially speed up I/O without violating any contracts of the
+ * server.
+ */
+void un_synch_un_autoflush_std_io_for_speed() {
+  // remove synch on std I/O
+  std::ios_base::sync_with_stdio(false);
+  // don't flush std::out before read std::cin
+  std::cin.tie(NULL);
+}
+
+/**
  * Functor for a model of the specified template type and its log
  * density configuration in terms of dropping constants and/or the
  * change-of-variables adjustment.
@@ -438,21 +451,7 @@ struct repl {
     out_ << std::endl;
     return true;
   }
-
 };  // struct repl
-
-/**
- * Turn off synchronization within standard streams and don't flush
- * `std::out` before reading `std::in`.  Together, these should
- * substantially speed up I/O without violating any contracts of the
- * server.
- */
-void un_synch_un_autoflush_std_io_for_speed() {
-  // remove synch on std I/O
-  std::ios_base::sync_with_stdio(false);
-  // don't flush std::out before read std::cin
-  std::cin.tie(NULL);
-}
 
 /**
  * Object managing server configuration.
