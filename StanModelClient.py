@@ -103,6 +103,19 @@ class StanClient:
         """
         return int(self.request("param_num" + " " + str(tp) + " " + str(gq)))
 
+    def dims(self):
+        """Return number of parameters.
+
+        This is the dimensionality of the log density function.  It does
+        not include transformed parameters or generated quantities.
+        Equivalent to calling `param_num(0, 0)`
+
+        Returns:
+        number of parameters
+        """
+        return self.param_num(0, 0)
+
+
     def param_unc_num(self):
         """Return the number of unconstrained parameters.
 
@@ -114,7 +127,7 @@ class StanClient:
         """
         return int(self.request("param_unc_num"))
 
-    def paramNames(self, tp = 1, gq = 1):
+    def param_names(self, tp = 1, gq = 1):
         """Return the encoded constrained parameter names.
 
         Optionally includes names of transformed parameters and
