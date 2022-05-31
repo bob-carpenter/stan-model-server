@@ -87,15 +87,17 @@ class StanClient:
         """
         return self.request("name")
 
-    def param_num(self, tp, gq):
+    def param_num(self, tp = 1, gq = 1):
         """Return the number of constrained parameters.
 
         Optionally includes counts of transformed parameters and
         generated quantities.
 
         Args:
-            tp: 1 to include transformed parameters, 0 to exclude
-            gq: 1 to include generated quantities, 0 to exclude
+            tp: int, default = 1
+                1 to include transformed parameters, 0 to exclude
+            gq: int, default = 1
+                1 to include generated quantitites, 0 to exclude
         Returns:
             number of parameters
         """
@@ -112,7 +114,7 @@ class StanClient:
         """
         return int(self.request("param_unc_num"))
 
-    def paramNames(self, tp, gq):
+    def paramNames(self, tp = 1, gq = 1):
         """Return the encoded constrained parameter names.
 
         Optionally includes names of transformed parameters and
@@ -123,8 +125,10 @@ class StanClient:
         second column of matrix `b`.
 
         Args:
-            tp: 1 to include transformed parameters, 0 to exclude
-            gq: 1 to include generated quantities, 0 to exclude
+            tp: int, default = 1
+                1 to include transformed parameters, 0 to exclude
+            gq: int, default = 1
+                1 to include generated quantitites, 0 to exclude
         Returns:
             array of parameter names
         """
@@ -145,16 +149,19 @@ class StanClient:
         """
         return self.request("param_unc_names").split(',')
 
-    def param_constrain(self, tp, gq, params_unc):
+    def param_constrain(self, params_unc, tp = 1, gq = 1):
         """Return the constrained parameters for the specified unconstrained parameters.
 
         Optionally include the transformed parameters and generate the
         generated quantities using the pseudo-RNG built into the server.
 
         Args:
-            tp: 1 to include transformed parameters, 0 to exclude
-            gq: 1 to include generated quantitites, 0 to exclude
-            params_unc: array of unconstrained parameters
+            params_unc: array
+                        unconstrained parameters
+            tp: int, default = 1
+                1 to include transformed parameters, 0 to exclude
+            gq: int, default = 1
+                1 to include generated quantitites, 0 to exclude
         Returns:
             array of constrained parameters in double precision
         """
@@ -164,7 +171,7 @@ class StanClient:
 
 
     def param_unconstrain(self, param_dict):
-        """Return the unconstrained parameters for the specified parameters.
+        """Return unconstrained parameters for parameters.
 
         The parameters are provided in dictionary form with the shapes
         expected by the Stan program.  Does not include transformed
@@ -172,7 +179,8 @@ class StanClient:
         are not defined on the unconstrained scale.
 
         Args:
-            params_dict: dictionary of constrained parameters
+            params_dict: dictionary
+                         parameter values
         Returns:
             array of constrained parameters in double precision
         """
@@ -180,17 +188,20 @@ class StanClient:
         self.write(json.dumps(param_dict))
         return self.get_return_floats()
 
-    def log_density(self, propto, jacobian, params_unc):
-        """Return the log density for the specified unconstrained parameters.
+    def log_density(self, params_unc, propto = 1, jacobian = 1):
+        """Return log density for unconstrained parameters.
 
         The `propto` and `jacobian` flags indicate whether to include
         the constant terms and the change-of-variables adjustment in the
         result.
 
         Args:
-            propto: 1 to exclude constant terms, 1 to include
-            jacobian: 1 to include change-of-variables adjustment, 0 to exclude
-            params_unc: array of unconstrained parameters
+            params_unc: array
+                        unconstrained parameter values
+            propto: int, default = 1
+                    1 to exclude constant terms, 0 to include
+            jacobian: int, default = 1
+                      1 to include change-of-variables adjustment, 0 to exclude
 
         Return:
             log density of unconstrained parameters
@@ -199,17 +210,20 @@ class StanClient:
         self.write_nums(params_unc)
         return self.get_return_float()
 
-    def log_density_gradient(self, propto, jacobian, params_unc):
-        """Return a pair of the log density and gradient for the unconstrained parameters.
+    def log_density_gradient(self, params_unc, propto = 1, jacobian = 1):
+        """Return a pair of log density and gradient for unconstrained parameters.
 
         The `propto` and `jacobian` flags indicate whether to include
         the constant terms and the change-of-variables adjustment in the
         result.
 
         Args:
-            propto: 1 to exclude constant terms, 1 to include
-            jacobian: 1 to include change-of-variables adjustment, 0 to exclude
-            params_unc: array of unconstrained parameters
+            params_unc: array
+                        unconstrained parameter values
+            propto: int, default = 1
+                    1 to exclude constant terms, 0 to include
+            jacobian: int, default = 1
+                      1 to include change-of-variables adjustment, 0 to exclude
 
         Return:
             pair of log density and gradient of unconstrained parameters
@@ -219,29 +233,7 @@ class StanClient:
         zs = self.get_return_floats()
         return zs[0], zs[1:]
 
-    def log_density_hessian(self, propto, jacobian, params_unc):
-        """Return a pair of the log density and Hessian for the unconstrained parameters.
-
-        The `propto` and `jacobian` flags indicate whether to include
-        the constant terms and the change-of-variables adjustment in the
-        result.
-
-        Args:
-            propto: 1 to exclude constant terms, 1 to include
-            jacobian: 1 to include change-of-variables adjustment, 0 to exclude
-            params_unc: array of unconstrained parameters
-
-        Return:
-            pair of log density and Hessian of unconstrained parameters
-        """
-        self.write("log_density " + str(propto) + " " + str(jacobian) + " 0 1")
-        self.write_nums(params_unc)
-        zs = self.get_return_floats()
-        zs_H = zs[1:]
-        N = int(np.sqrt(len(zs_H)))
-        return zs[0], np.reshape(zs[1:], (N, N))
-
-    def log_density_gradient_hessian(self, propto, jacobian, params_unc):
+    def log_density_hessian(self, params_unc, propto = 1, jacobian = 1):
         """Return a triple of log density, gradient, and Hessian for unconstrained parameters.
 
         The `propto` and `jacobian` flags indicate whether to include
@@ -249,9 +241,12 @@ class StanClient:
         result.
 
         Args:
-            propto: 1 to exclude constant terms, 1 to include
-            jacobian: 1 to include change-of-variables adjustment, 0 to exclude
-            params_unc: array of unconstrained parameters
+            params_unc: array
+                        unconstrained parameter values
+            propto: int, default = 1
+                    1 to exclude constant terms, 0 to include
+            jacobian: int, default = 1
+                      1 to include change-of-variables adjustment, 0 to exclude
 
         Return:
             triple of log density, gradient, and Hessian of unconstrained parameters
