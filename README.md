@@ -84,17 +84,35 @@ structure of Redding Stan:
 
 ## Python Client
 
-The Python client is still a work in progress and so far only has the
-`name()` method implemented.
+The Python client is feature complete. It can be invoked this way
+after the Bernoulli example is compiled.
 
 ```python
 > import StanModelClient as smc
 > sc = smc.StanClient("./stan/bernoulli/bernoulli",
                       data = "stan/bernoulli/bernoulli.data.json",
                       seed = 1234)
+
+Here are some example calls.
+
+```python
 > sc.name()
-bernoulli_model
+
+> sc.param_names()
+
+> sc.log_density_gradient([-2.3])
+
+> sc.param_constrain([-2.3])
 ```
+
+Documentation is available as docstrings in the
+[source code](StanModelClient.py).
+
+### Python-based Samplers
+
+The plan is to build samplers out in Python using this interface.  The
+samplers are even more a work-in-progress than the client interface.
+For now, there is a [worked example of Metropolis with a Stan model](example.py).
 
 
 ## License
