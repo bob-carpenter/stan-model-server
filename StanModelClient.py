@@ -53,30 +53,30 @@ class StanClient:
     def write(self, msg):
         self.server.stdin.write(msg.encode("utf-8"))
 
-    def writeNum(self, x):
+    def write_num(self, x):
         self.write(' ')
         self.write(str(x))
 
-    def writeNums(self, xs):
+    def write_nums(self, xs):
         for x in xs:
-            self.writeNum(x)
+            self.write_num(x)
         # np.savetxt(self.server.stdin, xs, newline=" ", delimiter=" ")
 
-    def getReturn(self):
+    def get_return(self):
         self.write("\n")
         self.server.stdin.flush()
         return self.read()
 
-    def getReturnFloat(self):
-        return float(self.getReturn())
+    def get_return_float(self):
+        return float(self.get_return())
 
-    def getReturnFloats(self):
-        ys = self.getReturn().split(',')
+    def get_return_floats(self):
+        ys = self.get_return().split(',')
         return np.asfarray(ys, dtype=np.float64)
 
     def request(self, msg):
         self.write(msg)
-        return self.getReturn()
+        return self.get_return()
 
     # REPL functions
     def name(self):
@@ -87,7 +87,7 @@ class StanClient:
         """
         return self.request("name")
 
-    def paramNum(self, tp, gq):
+    def param_num(self, tp, gq):
         """Return the number of constrained parameters.
 
         Optionally includes counts of transformed parameters and
@@ -101,7 +101,7 @@ class StanClient:
         """
         return int(self.request("param_num" + " " + str(tp) + " " + str(gq)))
 
-    def paramUncNum(self):
+    def param_unc_num(self):
         """Return the number of unconstrained parameters.
 
         Does not include transformed parameters or generated
@@ -130,7 +130,7 @@ class StanClient:
         """
         return self.request("param_names" + " " + str(tp) + " " + str(gq)).split(',')
 
-    def paramUncNames(self):
+    def param_unc_names(self):
         """Return the encoded unconstrained parameter names.
 
         Does not include transformed parameters or generated quantities
@@ -145,7 +145,7 @@ class StanClient:
         """
         return self.request("param_unc_names").split(',')
 
-    def paramConstrain(self, tp, gq, params_unc):
+    def param_constrain(self, tp, gq, params_unc):
         """Return the constrained parameters for the specified unconstrained parameters.
 
         Optionally include the transformed parameters and generate the
@@ -159,11 +159,11 @@ class StanClient:
             array of constrained parameters in double precision
         """
         self.write("param_constrain" + " " + str(tp) + " " + str(gq))
-        self.writeNums(params_unc)
-        return self.getReturnFloats()
+        self.write_nums(params_unc)
+        return self.get_return_floats()
 
 
-    def paramUnconstrain(self, param_dict):
+    def param_unconstrain(self, param_dict):
         """Return the unconstrained parameters for the specified parameters.
 
         The parameters are provided in dictionary form with the shapes
@@ -178,9 +178,9 @@ class StanClient:
         """
         self.write("param_unconstrain ")
         self.write(json.dumps(param_dict))
-        return self.getReturnFloats()
+        return self.get_return_floats()
 
-    def logDensity(self, propto, jacobian, params_unc):
+    def log_density(self, propto, jacobian, params_unc):
         """Return the log density for the specified unconstrained parameters.
 
         The `propto` and `jacobian` flags indicate whether to include
@@ -196,10 +196,10 @@ class StanClient:
             log density of unconstrained parameters
         """
         self.write("log_density " + str(propto) + " " + str(jacobian) + " 0 0")
-        self.writeNums(params_unc)
-        return self.getReturnFloat()
+        self.write_nums(params_unc)
+        return self.get_return_float()
 
-    def logDensityGradient(self, propto, jacobian, params_unc):
+    def log_density_gradient(self, propto, jacobian, params_unc):
         """Return a pair of the log density and gradient for the unconstrained parameters.
 
         The `propto` and `jacobian` flags indicate whether to include
@@ -215,11 +215,11 @@ class StanClient:
             pair of log density and gradient of unconstrained parameters
         """
         self.write("log_density " + str(propto) + " " + str(jacobian) + " 1 0")
-        self.writeNums(params_unc)
-        zs = self.getReturnFloats()
+        self.write_nums(params_unc)
+        zs = self.get_return_floats()
         return zs[0], zs[1:]
 
-    def logDensityHessian(self, propto, jacobian, params_unc):
+    def log_density_hessian(self, propto, jacobian, params_unc):
         """Return a pair of the log density and Hessian for the unconstrained parameters.
 
         The `propto` and `jacobian` flags indicate whether to include
@@ -235,13 +235,13 @@ class StanClient:
             pair of log density and Hessian of unconstrained parameters
         """
         self.write("log_density " + str(propto) + " " + str(jacobian) + " 0 1")
-        self.writeNums(params_unc)
-        zs = self.getReturnFloats()
+        self.write_nums(params_unc)
+        zs = self.get_return_floats()
         zs_H = zs[1:]
         N = int(np.sqrt(len(zs_H)))
         return zs[0], np.reshape(zs[1:], (N, N))
 
-    def logDensityGradientHessian(self, propto, jacobian, params_unc):
+    def log_density_gradient_hessian(self, propto, jacobian, params_unc):
         """Return a triple of log density, gradient, and Hessian for unconstrained parameters.
 
         The `propto` and `jacobian` flags indicate whether to include
@@ -257,7 +257,7 @@ class StanClient:
             triple of log density, gradient, and Hessian of unconstrained parameters
         """
         self.write("log_density " + str(propto) + " " + str(jacobian) + " 1 1")
-        self.writeNums(params_unc)
-        zs = self.getReturnFloats()
+        self.write_nums(params_unc)
+        zs = self.get_return_floats()
         N = int(np.sqrt(len(zs) - 1))
         return zs[0], zs[1:(N + 1)], np.reshape(zs[(N + 1):], (N, N))
