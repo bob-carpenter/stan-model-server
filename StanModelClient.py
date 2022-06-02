@@ -5,29 +5,18 @@ This module supplies a client for the Stan Model Server.
 Example:
 """
 import numpy as np
-
-import csv
+import numpy.typing as npt
 import json
 import subprocess
+from typing import List, Tuple
 
-
-def readCsv(csv):
-    """Return list of strings parsed from specified CSV string using.
-
-    Args:
-        csv: CSV-encoded string from which to parse array
-    Returns:
-        array of strings parsed from argument
-    """
-    return next(csv.reader([x]))
 
 class StanClient:
     """Stan client class holding all resources.
 
-    Attributes:
-        server: Subprocess for Stan model server
+        Attributes:
+    +-        server: Subprocess for Stan model server
     """
-    server = []
 
     def __init__(self, modelExe, data, seed=1234):
         """Construct a Stan client with open subprocess to server.
@@ -37,46 +26,48 @@ class StanClient:
             data: Path to JSON data file
             seed: Pseudo-random number generator seed; Defaults to 1234
         """
-        cmd = [modelExe, '-d', data, '-s', str(seed)]
-        self.server = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        cmd = [modelExe, "-d", data, "-s", str(seed)]
+        self.server = subprocess.Popen(
+            cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
 
     def __del__(self):
         """Close the server process, terminate it, and wait for shutdown."""
+        # self.request("quit")  # TODO(carpenter): check to see if this does termination/closes process
         self.server.stdin.close()
         self.server.terminate()
         self.server.wait(timeout=0.5)
 
     # I/O functions
-    def read(self):
+    def _read(self):
         return self.server.stdout.readline().decode("utf-8").strip()
 
-    def write(self, msg):
+    def _write(self, msg):
         self.server.stdin.write(msg.encode("utf-8"))
 
-    def write_num(self, x):
-        self.write(' ')
-        self.write(str(x))
+    def _write_num(self, x):
+        self._write(" ")
+        self._write(str(x))
 
-    def write_nums(self, xs):
+    def _write_nums(self, xs):
         for x in xs:
-            self.write_num(x)
+            self._write_num(x)
         # np.savetxt(self.server.stdin, xs, newline=" ", delimiter=" ")
 
-    def get_return(self):
-        self.write("\n")
+    def _get_return(self):
+        self._write("\n")
         self.server.stdin.flush()
-        return self.read()
+        return self._read()
 
-    def get_return_float(self):
-        return float(self.get_return())
+    def _get_return_float(self):
+        return float(self._get_return())
 
-    def get_return_floats(self):
-        ys = self.get_return().split(',')
-        return np.asfarray(ys, dtype=np.float64)
+    def _get_return_floats(self):
+        return np.fromstring(self._get_return(), sep=",", dtype=np.float64)
 
-    def request(self, msg):
-        self.write(msg)
-        return self.get_return()
+    def _request(self, msg):
+        self._write(msg)
+        return self._get_return()
 
     # REPL functions
     def name(self):
@@ -85,23 +76,23 @@ class StanClient:
         Returns:
             Name of model being served.
         """
-        return self.request("name")
+        return self._request("name")
 
-    def param_num(self, tp = 1, gq = 1):
+    def param_num(self, tp=True, gq=True):
         """Return the number of constrained parameters.
 
         Optionally includes counts of transformed parameters and
         generated quantities.
 
         Args:
-            tp: int, default = 1
-                1 to include transformed parameters, 0 to exclude
-            gq: int, default = 1
-                1 to include generated quantitites, 0 to exclude
+            tp: int, default = `True`
+                `True` to include transformed parameters, `False` to exclude
+            gq: int, default = True
+                `True` to include generated quantitites, `False` to exclude
         Returns:
             number of parameters
         """
-        return int(self.request("param_num" + " " + str(tp) + " " + str(gq)))
+        return int(self._request("param_num" + " " + str(int(tp)) + " " + str(int(gq))))
 
     def dims(self):
         """Return number of parameters.
@@ -115,7 +106,6 @@ class StanClient:
         """
         return self.param_num(0, 0)
 
-
     def param_unc_num(self):
         """Return the number of unconstrained parameters.
 
@@ -125,9 +115,9 @@ class StanClient:
         Returns:
             number of unconstrained parameters
         """
-        return int(self.request("param_unc_num"))
+        return int(self._request("param_unc_num"))
 
-    def param_names(self, tp = 1, gq = 1):
+    def param_names(self, tp=True, gq=True):
         """Return the encoded constrained parameter names.
 
         Optionally includes names of transformed parameters and
@@ -138,14 +128,16 @@ class StanClient:
         second column of matrix `b`.
 
         Args:
-            tp: int, default = 1
-                1 to include transformed parameters, 0 to exclude
-            gq: int, default = 1
-                1 to include generated quantitites, 0 to exclude
+            tp: bool, default = `True`
+                `True` to include transformed parameters, `False` to exclude
+            gq: bool, default = True
+                `True` to include generated quantitites, `False` to exclude
         Returns:
             array of parameter names
         """
-        return self.request("param_names" + " " + str(tp) + " " + str(gq)).split(',')
+        return self._request(
+            "param_names" + " " + str(int(tp)) + " " + str(int(gq))
+        ).split(",")
 
     def param_unc_names(self):
         """Return the encoded unconstrained parameter names.
@@ -160,9 +152,9 @@ class StanClient:
         Returns:
             array of parameter names
         """
-        return self.request("param_unc_names").split(',')
+        return self._request("param_unc_names").split(",")
 
-    def param_constrain(self, params_unc, tp = 1, gq = 1):
+    def param_constrain(self, params_unc, tp=True, gq=True):
         """Return the constrained parameters for the specified unconstrained parameters.
 
         Optionally include the transformed parameters and generate the
@@ -171,17 +163,16 @@ class StanClient:
         Args:
             params_unc: array
                         unconstrained parameters
-            tp: int, default = 1
-                1 to include transformed parameters, 0 to exclude
-            gq: int, default = 1
-                1 to include generated quantitites, 0 to exclude
+            tp: bool, default = `True`
+                `True` to include transformed parameters, `False` to exclude
+            gq: bool, default = True
+                `True` to include generated quantitites, `False` to exclude
         Returns:
             array of constrained parameters in double precision
         """
-        self.write("param_constrain" + " " + str(tp) + " " + str(gq))
-        self.write_nums(params_unc)
-        return self.get_return_floats()
-
+        self._write("param_constrain" + " " + str(int(tp)) + " " + str(int(gq)))
+        self._write_nums(params_unc)
+        return self._get_return_floats()
 
     def param_unconstrain(self, param_dict):
         """Return unconstrained parameters for parameters.
@@ -197,11 +188,11 @@ class StanClient:
         Returns:
             array of constrained parameters in double precision
         """
-        self.write("param_unconstrain ")
-        self.write(json.dumps(param_dict))
-        return self.get_return_floats()
+        self._write("param_unconstrain ")
+        self._write(json.dumps(param_dict))
+        return self._get_return_floats()
 
-    def log_density(self, params_unc, propto = 1, jacobian = 1):
+    def log_density(self, params_unc, propto=True, jacobian=True):
         """Return log density for unconstrained parameters.
 
         The `propto` and `jacobian` flags indicate whether to include
@@ -211,19 +202,21 @@ class StanClient:
         Args:
             params_unc: array
                         unconstrained parameter values
-            propto: int, default = 1
-                    1 to exclude constant terms, 0 to include
-            jacobian: int, default = 1
-                      1 to include change-of-variables adjustment, 0 to exclude
+            propto: bool, default = True
+                    True to exclude constant terms, False to include
+            jacobian: bool, default = True
+                      True to include change-of-variables adjustment, False to exclude
 
         Return:
             log density of unconstrained parameters
         """
-        self.write("log_density " + str(propto) + " " + str(jacobian) + " 0 0")
-        self.write_nums(params_unc)
-        return self.get_return_float()
+        self._write(
+            "log_density " + str(int(propto)) + " " + str(int(jacobian)) + " 0 0"
+        )
+        self._write_nums(params_unc)
+        return self._get_return_float()
 
-    def log_density_gradient(self, params_unc, propto = 1, jacobian = 1):
+    def log_density_gradient(self, params_unc, propto=True, jacobian=True):
         """Return a pair of log density and gradient for unconstrained parameters.
 
         The `propto` and `jacobian` flags indicate whether to include
@@ -233,20 +226,22 @@ class StanClient:
         Args:
             params_unc: array
                         unconstrained parameter values
-            propto: int, default = 1
-                    1 to exclude constant terms, 0 to include
-            jacobian: int, default = 1
-                      1 to include change-of-variables adjustment, 0 to exclude
+            propto: bool, default = True
+                    True to exclude constant terms, False to include
+            jacobian: bool, default = True
+                      True to include change-of-variables adjustment, False to exclude
 
         Return:
             pair of log density and gradient of unconstrained parameters
         """
-        self.write("log_density " + str(propto) + " " + str(jacobian) + " 1 0")
-        self.write_nums(params_unc)
-        zs = self.get_return_floats()
+        self._write(f"log_density {int(propto)} {int(jacobian)} 1 0")
+        self._write_nums(params_unc)
+        zs = self._get_return_floats()
         return zs[0], zs[1:]
 
-    def log_density_hessian(self, params_unc, propto = 1, jacobian = 1):
+    def log_density_hessian(
+        self, params_unc: npt.ArrayLike, propto: bool = True, jacobian: bool = False
+    ) -> Tuple[float, npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         """Return a triple of log density, gradient, and Hessian for unconstrained parameters.
 
         The `propto` and `jacobian` flags indicate whether to include
@@ -256,16 +251,18 @@ class StanClient:
         Args:
             params_unc: array
                         unconstrained parameter values
-            propto: int, default = 1
-                    1 to exclude constant terms, 0 to include
-            jacobian: int, default = 1
-                      1 to include change-of-variables adjustment, 0 to exclude
+            propto: bool, default = True
+                    True to exclude constant terms, False to include
+            jacobian: bool, default = True
+                      True to include change-of-variables adjustment, False to exclude
 
         Return:
             triple of log density, gradient, and Hessian of unconstrained parameters
         """
-        self.write("log_density " + str(propto) + " " + str(jacobian) + " 1 1")
-        self.write_nums(params_unc)
-        zs = self.get_return_floats()
+        self._write(
+            "log_density " + str(int(propto)) + " " + str(int(jacobian)) + " 1 1"
+        )
+        self._write_nums(params_unc)
+        zs = self._get_return_floats()
         N = int(np.sqrt(len(zs) - 1))
-        return zs[0], zs[1:(N + 1)], np.reshape(zs[(N + 1):], (N, N))
+        return zs[0], zs[1 : (N + 1)], np.reshape(zs[(N + 1) :], (N, N))
