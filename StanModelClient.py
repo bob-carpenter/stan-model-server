@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import json
 import subprocess
-from typing import Iterable, List, Mapping, Tuple, Union
+from typing import Any, Iterable, List, Mapping, Tuple, Union
 
 
 class StanClient:
@@ -16,7 +16,7 @@ class StanClient:
     +-        server: Subprocess for Stan model server
     """
 
-    def __init__(self, modelExe, data, seed=1234):
+    def __init__(self, modelExe: str, data: str, seed: int = 1234) -> None:
         """Construct a Stan client with open subprocess to server.
 
         Args:
@@ -25,11 +25,11 @@ class StanClient:
             seed: Pseudo-random number generator seed; Defaults to 1234
         """
         cmd = [modelExe, "-d", data, "-s", str(seed)]
-        self.server = subprocess.Popen(
+        self.server: Any = subprocess.Popen(
             cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Close the server process, terminate it, and wait for shutdown."""
         # self.request("quit")  # TODO(carpenter): check to see if this does termination/closes process
         self.server.stdin.close()
