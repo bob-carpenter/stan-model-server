@@ -25,24 +25,24 @@ class StanClient:
             seed: Pseudo-random number generator seed; Defaults to 1234
         """
         cmd = [modelExe, "-d", data, "-s", str(seed)]
-        self.server: subprocess.Popen = subprocess.Popen(
+        self.server: subprocess.Popen[bytes] = subprocess.Popen(
             cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
 
     def __del__(self) -> None:
         """Close the server process, terminate it, and wait for shutdown."""
-        self.request("quit")
-        self.server.stdin.close()
+        self._request("quit")
+        self.server.stdin.close()  # type:ignore
         # TODO(carpenter): check to see if quit already closes
         self.server.terminate()
         self.server.wait(timeout=0.5)
 
     # I/O functions
     def _read(self) -> str:
-        return self.server.stdout.readline().decode("utf-8").strip()
+        return self.server.stdout.readline().decode("utf-8").strip()  # type:ignore
 
     def _write(self, msg: str) -> None:
-        self.server.stdin.write(msg.encode("utf-8"))
+        self.server.stdin.write(msg.encode("utf-8"))  # type:ignore
 
     def _write_num(self, x: float) -> None:
         self._write(" ")
@@ -51,18 +51,19 @@ class StanClient:
     def _write_nums(self, xs: Iterable[float]) -> None:
         for x in xs:
             self._write_num(x)
-        # np.savetxt(self.server.stdin, xs, newline=" ", delimiter=" ")
 
     def _get_return(self) -> str:
         self._write("\n")
-        self.server.stdin.flush()
+        self.server.stdin.flush()  # type:ignore
         return self._read()
 
     def _get_return_float(self) -> float:
         return float(self._get_return())
 
     def _get_return_floats(self) -> npt.NDArray[np.float64]:
-        return np.fromstring(self._get_return(), sep=",", dtype=np.float64)
+        return np.fromstring(
+            self._get_return(), sep=",", dtype=np.float64
+        )  # type:ignore
 
     def _request(self, msg: str) -> str:
         self._write(msg)
