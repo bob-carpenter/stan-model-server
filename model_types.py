@@ -35,6 +35,7 @@ class ModelGradFiniteDiff(LogDensityGrad):
     ) -> Tuple[float, NDArray[np.float64]]:
         log_p = self.log_density(params_unc)
         # TODO finite difference things
+        # look into scipy.optimize.approx_fprime
         return log_p, np.array([])
 
     # boilerplate
