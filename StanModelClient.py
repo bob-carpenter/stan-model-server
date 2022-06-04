@@ -12,8 +12,8 @@ from typing import Any, Iterable, List, Mapping, Tuple, Union
 class StanClient:
     """Stan client class holding all resources.
 
-        Attributes:
-    +-        server: Subprocess for Stan model server
+    Attributes:
+        server: Subprocess for Stan model server
     """
 
     def __init__(self, modelExe: str, data: str, seed: int = 1234) -> None:
@@ -25,23 +25,24 @@ class StanClient:
             seed: Pseudo-random number generator seed; Defaults to 1234
         """
         cmd = [modelExe, "-d", data, "-s", str(seed)]
-        self.server: Any = subprocess.Popen(
+        self.server: subprocess.Popen[bytes] = subprocess.Popen(
             cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
 
     def __del__(self) -> None:
         """Close the server process, terminate it, and wait for shutdown."""
-        # self.request("quit")  # TODO(carpenter): check to see if this does termination/closes process
-        self.server.stdin.close()
+        self._request("quit")
+        self.server.stdin.close()  # type:ignore
+        # TODO(carpenter): check to see if quit already closes
         self.server.terminate()
         self.server.wait(timeout=0.5)
 
     # I/O functions
     def _read(self) -> str:
-        return self.server.stdout.readline().decode("utf-8").strip()
+        return self.server.stdout.readline().decode("utf-8").strip()  # type:ignore
 
     def _write(self, msg: str) -> None:
-        self.server.stdin.write(msg.encode("utf-8"))
+        self.server.stdin.write(msg.encode("utf-8"))  # type:ignore
 
     def _write_num(self, x: float) -> None:
         self._write(" ")
@@ -50,18 +51,19 @@ class StanClient:
     def _write_nums(self, xs: Iterable[float]) -> None:
         for x in xs:
             self._write_num(x)
-        # np.savetxt(self.server.stdin, xs, newline=" ", delimiter=" ")
 
     def _get_return(self) -> str:
         self._write("\n")
-        self.server.stdin.flush()
+        self.server.stdin.flush()  # type:ignore
         return self._read()
 
     def _get_return_float(self) -> float:
         return float(self._get_return())
 
     def _get_return_floats(self) -> npt.NDArray[np.float64]:
-        return np.fromstring(self._get_return(), sep=",", dtype=np.float64)
+        return np.fromstring(
+            self._get_return(), sep=",", dtype=np.float64
+        )  # type:ignore
 
     def _request(self, msg: str) -> str:
         self._write(msg)
@@ -71,7 +73,7 @@ class StanClient:
     def name(self) -> str:
         """Return name of model being served.
 
-        Returns:
+        Return:
             Name of model being served.
         """
         return self._request("name")
@@ -83,11 +85,9 @@ class StanClient:
         generated quantities.
 
         Args:
-            tp: int, default = `True`
-                `True` to include transformed parameters, `False` to exclude
-            gq: int, default = True
-                `True` to include generated quantitites, `False` to exclude
-        Returns:
+            tp: `True` to include transformed parameters, `False` to exclude
+            gq: `True` to include generated quantitites, `False` to exclude
+        Return:
             number of parameters
         """
         return int(self._request(f"param_num {int(tp)} {int(gq)}"))
@@ -99,7 +99,7 @@ class StanClient:
         not include transformed parameters or generated quantities.
         Equivalent to calling `param_num(0, 0)`
 
-        Returns:
+        Return:
         number of parameters
         """
         return self.param_num(False, False)
@@ -110,7 +110,7 @@ class StanClient:
         Does not include transformed parameters or generated
         quantities as these do not have unconstrained forms.
 
-        Returns:
+        Return:
             number of unconstrained parameters
         """
         return int(self._request("param_unc_num"))
@@ -126,11 +126,9 @@ class StanClient:
         second column of matrix `b`.
 
         Args:
-            tp: bool, default = `True`
-                `True` to include transformed parameters, `False` to exclude
-            gq: bool, default = True
-                `True` to include generated quantitites, `False` to exclude
-        Returns:
+            tp: `True` to include transformed parameters, `False` to exclude
+            gq: `True` to include generated quantitites, `False` to exclude
+        Return:
             array of parameter names
         """
         return self._request(f"param_names + {int(tp)} {int(tp)}").split(",")
@@ -145,7 +143,7 @@ class StanClient:
         one-dimensional array `a` and `b.1.2` might be the value at the
         first row and second column of matrix `b`.
 
-        Returns:
+        Return:
             array of parameter names
         """
         return self._request("param_unc_names").split(",")
@@ -159,13 +157,10 @@ class StanClient:
         generated quantities using the pseudo-RNG built into the server.
 
         Args:
-            params_unc: array
-                        unconstrained parameters
-            tp: bool, default = `True`
-                `True` to include transformed parameters, `False` to exclude
-            gq: bool, default = True
-                `True` to include generated quantitites, `False` to exclude
-        Returns:
+            params_unc: unconstrained parameters
+            tp: `True` to include transformed parameters, `False` to exclude
+            gq: `True` to include generated quantitites, `False` to exclude
+        Return:
             array of constrained parameters in double precision
         """
         self._write(f"param_constrain {int(tp)} {int(gq)}")
@@ -183,9 +178,8 @@ class StanClient:
         are not defined on the unconstrained scale.
 
         Args:
-            params_dict: dictionary
-                         parameter values
-        Returns:
+            params_dict: parameter values
+        Return:
             array of constrained parameters in double precision
         """
         self._write("param_unconstrain ")
@@ -202,13 +196,9 @@ class StanClient:
         result.
 
         Args:
-            params_unc: array
-                        unconstrained parameter values
-            propto: bool, default = True
-                    True to exclude constant terms, False to include
-            jacobian: bool, default = True
-                      True to include change-of-variables adjustment, False to exclude
-
+            params_unc: unconstrained parameter values
+            propto: `True` to exclude constant terms, `False` to include
+            jacobian: `True` to include change-of-variables adjustment, `False` to exclude
         Return:
             log density of unconstrained parameters
         """
@@ -226,13 +216,9 @@ class StanClient:
         result.
 
         Args:
-            params_unc: numpy.typing.ArrayLike
-                        unconstrained parameter values
-            propto: bool, default = True
-                    True to exclude constant terms, False to include
-            jacobian: bool, default = True
-                      True to include change-of-variables adjustment, False to exclude
-
+            params_unc: unconstrained parameter values
+            propto: `True` to exclude constant terms, `False` to include
+            jacobian: `True` to include change-of-variables adjustment, `False` to exclude
         Return:
             pair of log density and gradient of unconstrained parameters
         """
@@ -251,13 +237,9 @@ class StanClient:
         result.
 
         Args:
-            params_unc: numpy.typing.ArrayLike
-                        unconstrained parameter values
-            propto: bool, default = True
-                    True to exclude constant terms, False to include
-            jacobian: bool, default = True
-                      True to include change-of-variables adjustment, False to exclude
-
+            params_unc: unconstrained parameter values
+            propto: `True` to exclude constant terms, `False` to include
+            jacobian: `True` to include change-of-variables adjustment, `False` to exclude
         Return:
             tuple of log density, gradient, and Hessian of unconstrained parameters
         """
