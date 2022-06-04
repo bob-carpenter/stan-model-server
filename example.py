@@ -11,14 +11,18 @@ data = "stan/multi/multi.data.json"
 
 model = smc.StanClient(server, data=data, seed=1234)
 
-proposal_rng = lambda: np.random.normal(size=model.dims())
-
-sampler = mcmc.Metropolis(model, proposal_rng)
+stepsize = 0.1
+steps = 10
+sampler = mcmc.HMCDiag(model, stepsize=stepsize, steps=steps)
+sampler.sample()
 
 print(model.param_names(0, 0), ", log density, accept\n")
 for n in range(10):
-    theta = sampler.next()
+    theta = sampler.sample()
     print(theta, "\n")
+
+# proposal_rng = lambda: np.random.normal(size=model.dims())
+# sampler = mcmc.Metropolis(model, proposal_rng)
 
 stepsize = 0.1
 steps = 10
