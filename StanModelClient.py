@@ -61,9 +61,9 @@ class StanClient:
         return float(self._get_return())
 
     def _get_return_floats(self) -> npt.NDArray[np.float64]:
-        return np.fromstring(
+        return np.fromstring(   # type:ignore
             self._get_return(), sep=",", dtype=np.float64
-        )  # type:ignore
+        ) 
 
     def _request(self, msg: str) -> str:
         self._write(msg)
