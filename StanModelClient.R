@@ -4,21 +4,23 @@
 # 
 # This script contains an R-based client for the Stan Model Server.
 #
-# Before using the client, compile the model executable. 
+# Compile the model executable before using the client. See the 
+# `README.md` file in the `stan-model-server` repo for instructions.
 #
 # Also, if necessary install the following packages:
 # install.packages(c("processx", "R6", "rjson"))
-#------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 
 
-create_stan_client <- function(exe_file = NULL, data_file = NULL, seed = NULL) {
+create_stan_client <- function(exe_path = NULL, data_file = NULL, seed = NULL) {
   # Function call to create a StanClient object (R6) with three parameters: 
-  #        - exe_file (string): file path to the compiled model executable
+  #        - exe_path (string): file path to the compiled model executable
   #        - data_file (string): file path to the data file (in JSON format)
   #        - seed (numeric): set seed for random number generation
   
-  StanClient$new(path = exe_file, data = data_file, seed = seed)
+  StanClient$new(exe_path = exe_path, data_file = data_file, seed = seed)
 }
+
 
 StanClient <- R6::R6Class(
   # Stan client class holding all resources.
@@ -43,7 +45,7 @@ StanClient <- R6::R6Class(
     
     initialize = function(exe_path = NA, data_file = NA, seed = NA) {
       # Construct a Stan client with open process to server:
-        
+      
       self$exe_path <- exe_path
       self$data_file <- data_file
       self$seed <- seed
@@ -56,12 +58,12 @@ StanClient <- R6::R6Class(
       # Starts a background process using `processx`, opening a connection
       # to the Stan Model Server; this function is called when the 
       # object is created.
-        
+      
       self$proc <- processx::process$new(
         paste0("./", self$exe_path), 
         self$proc_args,
         stdout = "|", stdin = "|", stderr = "|"
-        )
+      )
     },
     
     end_process = function() {
@@ -106,7 +108,7 @@ StanClient <- R6::R6Class(
     
     name = function() {
       # Returns the name of the Stan model on the server
-        
+      
       self$write('name')
       return(self$read())
     },
@@ -117,9 +119,10 @@ StanClient <- R6::R6Class(
       # The function takes two optional arguments:
       #     - tp (logical): `TRUE` to include transformed parameters (default); `FALSE` to exclude
       #     - gq (logical): `TRUE`  to include generated quantities (default); `FALSE` to exclude
-        
+      
       self$write(paste('param_num', as.numeric(tp), as.numeric(gq), sep = " "))
-      return(self$read())
+      self$proc$poll_io(50)
+      return(as.numeric(self$read()))
     }, 
     
     dims = function() {
@@ -128,7 +131,7 @@ StanClient <- R6::R6Class(
       # This is the dimensionality of the log density function. It does
       # not include transformed parameters or generated quantities. It is
       # equivalent to calling `param_num(0, 0)`
-        
+      
       return(as.numeric(self$param_num(FALSE, FALSE)))
     },
     
@@ -137,8 +140,8 @@ StanClient <- R6::R6Class(
       #
       # Does not include transformed or generated quantities
       # as these do not have unconstrained forms.
-        
-        
+      
+      
       self$write('param_unc_num')
       self$proc$poll_io(50)
       return(as.numeric(self$read()))
@@ -157,7 +160,7 @@ StanClient <- R6::R6Class(
       #  The function takes two optional arguments:
       #     - tp (logical): `TRUE` to include transformed parameters (default); `FALSE` to exclude
       #     - gq (logical): `TRUE`  to include generated quantities (defautl); `FALSE` to exclude
-        
+      
       self$write(paste('param_names', as.numeric(tp), as.numeric(gq), sep = " "))
       self$proc$poll_io(50)
       return(strsplit(self$read(), split=",")[[1]])
@@ -173,8 +176,8 @@ StanClient <- R6::R6Class(
       # the second entry in a one-dimensional array `a` 
       # and `b.1.2` might be the value at the first row and
       # second column of matrix `b`.
-        
-        
+      
+      
       self$write('param_unc_names')
       self$proc$poll_io(50)
       return(strsplit(self$read(), split=",")[[1]])
@@ -191,11 +194,11 @@ StanClient <- R6::R6Class(
       #     - params_unc: unconstrained parameters
       #     - tp (logical): `TRUE` to include transformed parameters (default); `FALSE` to exclude
       #     - gq (logical): `TRUE`  to include generated quantities (defautl); `FALSE` to exclude
-        
-        
+      
+      
       self$write(paste('param_constrain', 
-                       as.numeric(tp), as.numeric(gp),
-                       param_unc, 
+                       as.numeric(tp), as.numeric(gq),
+                       params_unc, 
                        sep = " "))
       self$proc$poll_io(50)
       return(as.numeric(strsplit(self$read(), split=",")[[1]]))
@@ -212,7 +215,7 @@ StanClient <- R6::R6Class(
       # 
       # The function takes one argument: 
       #     - params_list (list): values for each parameter, e.g., list("theta" = -2.32)
-        
+      
       if (is.list(param_list) == FALSE) {
         return("Error: unconstrained parameters must be passed as a list")
       }
@@ -224,7 +227,7 @@ StanClient <- R6::R6Class(
       return(as.numeric(strsplit(self$read(), split=",")[[1]]))
     },
     
-    log_density = function(param_unc, propto=TRUE, jacobian=TRUE, grad=FALSE, hess=FALSE) {
+    log_density = function(params_unc, propto=TRUE, jacobian=TRUE, grad=FALSE, hess=FALSE) {
       # Return log density for unconstrained parameters
       #
       # The `propto` and `jacobian` arguments indicate whether to include
@@ -243,7 +246,7 @@ StanClient <- R6::R6Class(
       self$write(paste('log_density', 
                        as.numeric(propto), as.numeric(jacobian), 
                        as.numeric(grad), as.numeric(hess), 
-                       param_unc, 
+                       params_unc, 
                        sep = " "))
       
       self$proc$poll_io(50)
@@ -251,7 +254,7 @@ StanClient <- R6::R6Class(
       return(as.numeric(strsplit(self$read(), split=",")[[1]]))
     },
     
-    log_density_gradient = function(param_unc, propto=TRUE, jacobian=TRUE, grad=TRUE, hess=FALSE) {
+    log_density_gradient = function(params_unc, propto=TRUE, jacobian=TRUE, grad=TRUE, hess=FALSE) {
       # Return log density and gradient for unconstrained parameters
       #
       # The `propto` and `jacobian` arguments indicate whether to include
@@ -272,7 +275,7 @@ StanClient <- R6::R6Class(
                        as.numeric(jacobian), 
                        as.numeric(grad), 
                        as.numeric(hess), 
-                       param_unc, 
+                       params_unc, 
                        sep=" "))
       
       self$proc$poll_io(50)
@@ -285,7 +288,7 @@ StanClient <- R6::R6Class(
       return(lst_dens)
     },
     
-    log_density_hessian = function(param_unc, propto=TRUE, jacobian=TRUE, grad=TRUE, hess=TRUE) {
+    log_density_hessian = function(params_unc, propto=TRUE, jacobian=TRUE, grad=TRUE, hess=TRUE) {
       # Return log density, gradient, and Hessian for unconstrained parameters
       #
       # The `propto` and `jacobian` arguments indicate whether to include
@@ -307,7 +310,7 @@ StanClient <- R6::R6Class(
                        as.numeric(jacobian), 
                        as.numeric(grad), 
                        as.numeric(hess),
-                       param_unc, 
+                       params_unc, 
                        sep = " "))
       
       self$proc$poll_io(50)
