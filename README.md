@@ -132,7 +132,7 @@ For more information on the R Client, see the [source code](StanModelClient.R) a
 
 ### R-based Samplers
 
-In time, the samplers available in Python will also be available through the R interface. For now, however, see the [worked example of Metropolis with a Stan model](example.R). 
+In time, the samplers available in Python will also be available through the R interface. For now, however, see the [worked example of gradient descent on the Bernoulli Stan model](example.R). 
 
 ## License
 
