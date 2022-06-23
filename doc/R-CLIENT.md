@@ -220,18 +220,18 @@ Returns the log density, gradient, and Hessian for the unconstrained parameters 
 
 ## [How the R Client Communicates with the Stan Model Server](#comms)
 
-Since the Stan Model Server interface runs from the command line, one must start a background process from R that allows the user to run the model executable, and in turn read and write to the command line, within an R environment. The [`processx` library](https://processx.r-lib.org/) makes it easy to do so. 
+Since the Stan Model Server interface runs from the command line, one must start a background process from R that allows the user to run the model executable, and in turn read and write to the command line, within an R environment. The [`processx`](https://processx.r-lib.org/) makes it easy to do so. 
 
-The opening of this connection happens automatically when one initializes a `StanClient` object in R. Technically, the R Client creates an `StanClient` object using the `R6` library. The [`StanClient` object](https://github.com/bob-carpenter/stan-model-server/blob/feature/r-client/StanModelClient.R#L25) holds the methods and attributes of the Stan model. Crucially, upon initialization, this object starts a background process using the `processx` library, thereby opening a connection to the Stan Model Server. 
+The opening of this connection happens automatically when one initializes a `StanClient` object in R. Technically, the R Client creates an `StanClient` object using the [`R6`](https://r6.r-lib.org/) library; the [StanClient object](https://github.com/bob-carpenter/stan-model-server/blob/feature/r-client/StanModelClient.R#L25) holds the methods and attributes of the Stan model. Crucially, upon initialization, this object starts a background process using the `processx` library, thereby opening a connection to the Stan Model Server. 
 
 In the `processx` library, this connection is called a subprocess. The subprocess is stored within the `StanClient` object's `proc` attribute, which makes it easy to read the standard output and error as well as write the standard input of the background process (that is, the model server). The subprocess is initialized as follows:
 
 ```R
-      self$proc <- processx::process$new(
-        paste0("./", self$exe_path), 
-        self$proc_args,
-        stdout = "|", stdin = "|", stderr = "|"
-      )
+self$proc <- processx::process$new(
+	paste0("./", self$exe_path), 
+    self$proc_args,
+    stdout = "|", stdin = "|", stderr = "|"
+)
 ```
 
 The `process$new()` function starts a process and stores the resulting environment in the `proc` variable. The arguments are (1) the path to the executable, (2) the corresponding arguments, and (3) the options for the standard output, input, and error, respectively, which in this case are all piped. The arguments provided to the subprocess are those that are required [to start the server, namely, the data and pseudo-RNG seed](https://github.com/bob-carpenter/stan-model-server/blob/main/doc/REPL.md#step-2-run-server). By default, these arguments are stored in the `proc_args` attribute of the `StanClient` object; they consist of two flags and the arguments for the seed and data file. 
@@ -240,7 +240,27 @@ The `process$new()` function starts a process and stores the resulting environme
 self$proc_args <- c("-s", seed, "-d", data_file)
 ```
 
-The status of the subprocess, and hence the connection to the model server, can be checked using the [`status()` function in the `StanClient` object](https://github.com/bob-carpenter/stan-model-server/blob/feature/r-client/StanModelClient.R#L75), which is effectively a wrapper around the `processx` function `is_alive()`. 
+The status of the subprocess, and hence the connection to the Stan Model Server, can be checked using the [`status()` function in the `StanClient` object](https://github.com/bob-carpenter/stan-model-server/blob/feature/r-client/StanModelClient.R#L75), which is effectively a wrapper around the `processx` function `is_alive()`. 
+
+```R
+# Returns the status of the Stan Model Server
+status = function() {
+    
+    if (is.null(self$proc) == TRUE) {
+        return("Process uninitialized; connect to the Stan Model Server with 					init_process()")
+    }
+      
+    if (self$proc$is_alive() == FALSE) {
+  		return("Process stopped; reconnect to the Stan Model Server with 						init_process()")
+    }
+      
+    if (self$proc$is_alive() == TRUE) {
+        return("Process running; connected to Stan Model Server")
+    }
+}
+```
+
+
 
 When the process is running, it is possible to write and read to the subprocess using the[ `StanClient` object's `write()` and `read()` functions](https://github.com/bob-carpenter/stan-model-server/blob/feature/r-client/StanModelClient.R#L92), which are wrappers around `processx`'s `write_input()` and `read_output_lines()` functions. 
 
