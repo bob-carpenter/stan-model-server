@@ -17,12 +17,9 @@ For full documentation on the REPL, see:
 
 ## Hello, Shell!
 
-The package is distributed with a a Stan program in
-`stan/bernoulli/bernoulli.hpp` and matching data in
-`stan/bernoulli/bernoulli.data.json`.
+The package is distributed with a a Stan program in `stan/bernoulli/bernoulli.hpp` and matching data in `stan/bernoulli/bernoulli.data.json`.
 
-To compile the server
-executable,
+To compile the server executable,
 
 ```
 $ cd stan-model-server
@@ -35,8 +32,7 @@ Then we run from the command line with data and an RNG seed.
 $ stan/bernoulli/bernoulli -s 1234 -d stan/bernoulli/bernoulli.data.json
 ```
 
-The lines marked with `<` indicate input from the user and the
-unmarked lines are responses from the server.
+The lines marked with `<` indicate input from the user and the unmarked lines are responses from the server.
 
 ```
 < name
@@ -67,31 +63,25 @@ theta
 
 ## Motivation and Inspiration
 
-We want to be able to access Stan model methods from within R or
-Python in order to do algorithm development.  The first system that
-did this is HTTPStan, an official Stan project:
+We want to be able to access Stan model methods from within R or Python in order to do algorithm development.  The first system that did this is HTTPStan, an official Stan project:
 
 * GitHub stan-dev: [httpstan](https://github.com/stan-dev/httpstan)
 
-The direct inspiration for this project came from the simple I/O
-structure of Redding Stan:
+The direct inspiration for this project came from the simple I/O structure of ReddingStan:
 
-* Dan Muck and Daniel
-  Lee. 2022. [Smuggling log probability and gradients out of Stan programs — ReddingStan](https://blog.mc-stan.org/2022/03/24/smuggling-log-probability-and-gradients-out-of-stan-programs-reddingstan/). *The
-  Stan Blog*.
-* dmuck. [redding-stan](https://github.com/dmuck/redding-stan). GitHub.
-
+* Dan Muck and Daniel Lee. 2022. [Smuggling log probability and gradients out of Stan programs — ReddingStan](https://blog.mc-stan.org/2022/03/24/smuggling-log-probability-and-gradients-out-of-stan-programs-reddingstan/). *The Stan Blog*.
+* Github: [dmuck/redding-stan](https://github.com/dmuck/redding-stan) 
 
 ## Python Client
 
-The Python client is feature complete. It can be invoked this way
-after the Bernoulli example is compiled.
+The Python client is feature complete. It can be invoked this way after the Bernoulli example is compiled.
 
 ```python
 > import StanModelClient as smc
 > sc = smc.StanClient("./stan/bernoulli/bernoulli",
                       data = "stan/bernoulli/bernoulli.data.json",
                       seed = 1234)
+```
 
 Here are some example calls.
 
@@ -105,15 +95,44 @@ Here are some example calls.
 > sc.param_constrain([-2.3])
 ```
 
-Documentation is available as docstrings in the
-[source code](StanModelClient.py).
+Documentation is available as docstrings in the [source code](StanModelClient.py).
 
 ### Python-based Samplers
 
-The plan is to build samplers out in Python using this interface.  The
-samplers are even more a work-in-progress than the client interface.
-For now, there is a [worked example of Metropolis with a Stan model](example.py).
+The plan is to build samplers out in Python using this interface.  The samplers are even more a work-in-progress than the client interface. For now, there is a [worked example of Metropolis with a Stan model](example.py).
 
+## R Client
+
+The R Client is feature complete. It can be invoked this way after the Bernoulli example is compiled.
+
+```R
+# Load source file into environment
+source('StanModelClient.R')
+
+# Create the Stan Client 
+sc <- create_stan_client(exe_file = "./stan/bernoulli/bernoulli", 
+                         data_file = "stan/bernoulli/bernoulli.data.json", 
+                         seed = 1234)
+
+```
+
+Here are some example calls.
+
+```R
+sc$name()
+
+sc$param_names()
+
+sc$log_density_gradient(-2.3)
+
+sc$param_constrain(-2.3)
+```
+
+For more information on the R Client, see the [source code](StanModelClient.R) and the [documentation](./doc/R-CLIENT.md) for a complete list of commands and their usage.
+
+### R-based Samplers
+
+In time, the samplers available in Python will also be available through the R interface. For now, however, see the [worked example of gradient descent on the Bernoulli Stan model](example.R). 
 
 ## License
 
