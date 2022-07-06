@@ -23,7 +23,7 @@ To compile the server executable,
 
 ```
 $ cd stan-model-server
-$ make CMDSTAN=/Users/carp/github/stan-dev/cmdstan stan/bernoulli/bernoulli
+$ make CMDSTAN=/Users/carp/github/stan-dev/cmdstan/ stan/bernoulli/bernoulli
 ```
 
 Then we run from the command line with data and an RNG seed.
