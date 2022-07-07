@@ -106,10 +106,10 @@ has parameter names `z.re` and `z.im`)
 The following is a complete list of commands and their format.
 
 
-#### exit
+#### quit
 
 ```
-exit
+quit
 ```
 
 Writes an exit report, terminates REPL loop, frees
@@ -193,7 +193,7 @@ generated quantities.
 #### log_density
 
 ```
-log_density_grad <propto>(int) jacobian(int) grad(int) hess(int) <param_unc>(float(,float)*)
+log_density <propto>(int) <jacobian>(int) <grad>(int) <hess>(int) <param_unc>(float(,float)*)
 ```
 
 Return the log density of the unconstrained parameters
