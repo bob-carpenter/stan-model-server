@@ -51,10 +51,10 @@ class HMCDiag:
         # TODO(bob-carpenter): refactor to share non-initial and non-final updates
         for n in range(self._steps):
             lp, grad = self._model.log_density_gradient(theta)
-            rho_mid = rho - 0.5 * self._stepsize * np.multiply(self._metric, grad)
+            rho_mid = rho + 0.5 * self._stepsize * np.multiply(self._metric, grad)
             theta = theta + self._stepsize * rho_mid
             lp, grad = self._model.log_density_gradient(theta)
-            rho = rho_mid - 0.5 * self._stepsize * np.multiply(self._metric, grad)
+            rho = rho_mid + 0.5 * self._stepsize * np.multiply(self._metric, grad)
         return (theta, rho)
 
     def sample(self):
