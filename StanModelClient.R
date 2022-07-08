@@ -196,6 +196,7 @@ StanClient <- R6::R6Class(
       #     - gq (logical): `TRUE`  to include generated quantities (defautl); `FALSE` to exclude
       
       
+      params_unc=paste(params_unc, collapse=' ')
       self$write(paste('param_constrain', 
                        as.numeric(tp), as.numeric(gq),
                        params_unc, 
@@ -242,16 +243,16 @@ StanClient <- R6::R6Class(
       #       - `grad` (logical): `TRUE` to include gradient; `FALSE` to exclude (default)
       #       - `hess` (logical): `TRUE` to include Hessian; `FALSE` to exclude (default)
       
-      
+      params_unc=paste(params_unc, collapse=' ')
       self$write(paste('log_density', 
                        as.numeric(propto), as.numeric(jacobian), 
                        as.numeric(grad), as.numeric(hess), 
                        params_unc, 
                        sep = " "))
-      
       self$proc$poll_io(50)
+      return( as.numeric(unlist( strsplit(self$read(), split=","))[1] ) )
       
-      return(as.numeric(strsplit(self$read(), split=",")[[1]]))
+      
     },
     
     log_density_gradient = function(params_unc, propto=TRUE, jacobian=TRUE, grad=TRUE, hess=FALSE) {
@@ -269,6 +270,7 @@ StanClient <- R6::R6Class(
       #       - `grad` (logical): `TRUE` to include gradient (default); `FALSE` to exclude
       #       - `hess` (logical): `TRUE` to include Hessian; `FALSE` to exclude (default)
       
+      params_unc=paste(params_unc, collapse=' ')
       
       self$write(paste('log_density', 
                        as.numeric(propto), 
@@ -303,7 +305,7 @@ StanClient <- R6::R6Class(
       #       - `grad` (logical): `TRUE` to include gradient (default); `FALSE` to exclude
       #       - `hess` (logical): `TRUE` to include Hessian (default); `FALSE` to exclude
       
-      
+      params_unc=paste(params_unc, collapse=' ')
       
       self$write(paste('log_density',
                        as.numeric(propto), 
