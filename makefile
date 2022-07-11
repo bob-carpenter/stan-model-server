@@ -11,7 +11,7 @@
 ## include paths
 GITHUB ?= $(HOME)/github/
 CMDSTAN ?= $(GITHUB)stan-dev/cmdstan/
-STANC ?= $(CMDSTAN)bin/stanc
+STANC ?= $(CMDSTAN)bin/stanc$(EXE)
 STAN ?= $(CMDSTAN)stan/
 MATH ?= $(STAN)lib/stan_math/
 # TBB_TARGETS = $(MATH)lib/tbb/libtbb.dylib
