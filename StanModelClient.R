@@ -334,4 +334,40 @@ StanClient <- R6::R6Class(
   
   
 
+#' Compile a Stan server 
+#'
+#' @name model-server-compile
+#'
+#' @description The `model_server_compile()`  compile a stan model server, and 
+#'   creates an executable file. 
+#'   
+#' @param dir_model (string) The path to the stan file that is to be compiled.
+#' @param dir_server (string) The path to  [Stan-model-server](https://github.com/bob-carpenter/stan-model-server).
+#' @param dir_CMDSTAN (string) The path to [CmdStan](https://mc-stan.org/users/interfaces/cmdstan).
+#' @examples
+#' \dontrun{
+#' dir_CMDSTAN = cmdstanr::cmdstan_path()
+#' dir_server = Path-to-stan-model-server
+#' dir_model = file.path(cmdstan_path(), "examples/bernoulli/bernoulli.stan")
+#' model_server_compile (dir_model=dir_model, dir_server=dir_server,dir_CMDSTAN=dir_CMDSTAN)
+#' }
+#' 
+
+
+model_server_compile = function (dir_model, dir_server, dir_CMDSTAN){
+  if (nchar(dir_model) >=5 &   substr(dir_model,nchar(dir_model)-4,nchar(dir_model)) == '.stan')
+    dir_model = substr(dir_model, 1, nchar(dir_model)-5)
+  if (!file.exists( paste0(dir_model, ".stan")))
+    stop("Stan model file does not exist.")
+  if (!file.exists(dir_server))
+    stop("Unable to create make the server object. Stan model server does not exist. See https:.")
+  if (!file.exists(dir_CMDSTAN))
+    stop("Unable to create make the server object. CmdStan does not exist. See https: ")
+  if (substr(dir_CMDSTAN,nchar(dir_CMDSTAN),nchar(dir_CMDSTAN)) != '/')
+    dir_CMDSTAN=paste0(dir_CMDSTAN, '/')
+  system(paste("cd", dir_server))
+  system(paste0("CMDSTAN=", dir_CMDSTAN, " make ", dir_model), intern = TRUE)
+}
+
+
 
