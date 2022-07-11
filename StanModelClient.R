@@ -360,12 +360,15 @@ model_server_compile = function (dir_model, dir_server, dir_CMDSTAN){
   if (!file.exists( paste0(dir_model, ".stan")))
     stop("Stan model file does not exist.")
   if (!file.exists(dir_server))
-    stop("Unable to create make the server object. Stan model server does not exist. See https:.")
+    stop("Unable to create make the server object. Stan model server does not exist. See https://github.com/stan-dev/cmdstan.")
   if (!file.exists(dir_CMDSTAN))
-    stop("Unable to create make the server object. CmdStan does not exist. See https: ")
+    stop("Unable to create make the server object. CmdStan does not exist. See https://github.com/bob-carpenter/stan-model-server.")
   if (substr(dir_CMDSTAN,nchar(dir_CMDSTAN),nchar(dir_CMDSTAN)) != '/')
     dir_CMDSTAN=paste0(dir_CMDSTAN, '/')
   system(paste("cd", dir_server))
+  if (.Platform$OS.type == "windows") 
+    system(paste0("mingw32-make.exe ",  "CMDSTAN=", dir_CMDSTAN,  " ", dir_model), intern = TRUE)
+  else
   system(paste0("CMDSTAN=", dir_CMDSTAN, " make ", dir_model), intern = TRUE)
 }
 
