@@ -369,7 +369,7 @@ model_server_compile = function (dir_model, dir_server, dir_CMDSTAN){
   if (.Platform$OS.type == "windows") 
     system(paste0("mingw32-make.exe ",  "CMDSTAN=", dir_CMDSTAN,  " ", dir_model), intern = TRUE)
   else
-  system(paste0("CMDSTAN=", dir_CMDSTAN, " make ", dir_model), intern = TRUE)
+    system(paste0("CMDSTAN=", dir_CMDSTAN, " make ", dir_model), intern = TRUE)
 }
 
 
