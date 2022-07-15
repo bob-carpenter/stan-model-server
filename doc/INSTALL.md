@@ -48,8 +48,9 @@ repo and run the following make command.
 
 ```
 > cd <stan-dev>
-> clone https://github.com/stan-dev/cmdstan.git
+> git clone https://github.com/stan-dev/cmdstan.git
 > make stan-update
+> make build
 ```
 
 

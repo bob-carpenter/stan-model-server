@@ -55,7 +55,7 @@ class HMCDiag:
             theta = theta + self._stepsize * rho_mid
             lp, grad = self._model.log_density_gradient(theta)
             rho = rho_mid - 0.5 * self._stepsize * np.multiply(self._metric, grad)
-        return (theta, rho)
+        return theta, rho
 
     def sample(self):
         rho = np.random.normal(size=self._dim)
@@ -66,3 +66,22 @@ class HMCDiag:
           self._theta = theta_prop
           return self._theta, logp_prop
         return self._theta, logp
+
+class DelayedRejection:
+    def __init__(self, model, proposal1_rng, proposal2_rng, init=[]):
+        self._model = model
+        self._dim = self._model.dims()
+        self._q1_rng = proposal1_rng
+        self._q2_rng = proposal2_rng
+        self._theta = init or np.random.normal(size=self._dim)
+        self._log_p_theta = self._model.log_density(self._theta)
+        
+    def sample(self):
+        theta1 = self._theta + self._q1_rng()
+        log_p_theta1 = self._model.log_density(theta1)
+        accept = np.log(np.random.uniform()) < log_p_theta1 - self._log_p_theta
+        if accept:
+            self._theta = theta1
+            self._log_p_theta = log_p_theta1
+            return self._theta, self._log_p_theta
+        theta2 = self._theta + self._q2_rng(
