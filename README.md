@@ -1,5 +1,8 @@
 # Stan Model Server
 
+## NOTE: Stan Model Server is no longer under active development. For a more efficient interface to a Stan model's methods from multiple languages, check out [bridgestan](https://github.com/roualdes/bridgestan).
+
+
 A lightweight server interface to Stan model methods.
 
 #### Installation Instructions
